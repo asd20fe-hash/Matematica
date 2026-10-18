@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  Multiplicación paso a paso (refuerzo de 4to)
+  Versión: v1.0.0 (2026-10-18). El historial de cambios está al principio de multiplicacion.js
+  ============================================================
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Multiplicación paso a paso</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../_comun-4to/comun.css">
+<link rel="stylesheet" href="multiplicacion.css">
+</head>
+<body>
+<header class="ref-barra">
+  <button class="ref-btn" id="volver" title="Volver al menú">🏠 Menú</button>
+  <h1 id="titulo">Multiplicación paso a paso</h1>
+  <span class="ref-ver" id="ver"></span>
+  <button class="ref-btn" id="sonido" title="Sonido" aria-pressed="true">🔊</button>
+  <button class="ref-btn" id="fondo" title="Elegir el fondo" aria-haspopup="menu">🎨</button>
+  <button class="ref-btn" id="tema" title="Cambiar modo claro u oscuro">🌙</button>
+</header>
+<main id="app"></main>
+<div id="globo" role="status" aria-live="polite"></div>
+<script src="../../core/core.js"></script>
+<script src="../../perfiles.js"></script>
+<script src="../registro.js"></script>
+<script src="../_comun-4to/azar.js"></script>
+<script src="../_comun-4to/eventos.js"></script>
+<script src="../_comun-4to/ui-comun.js"></script>
+<script src="multiplicacion-logica.js"></script>
+<script src="multiplicacion.js"></script>
+</body>
+</html>

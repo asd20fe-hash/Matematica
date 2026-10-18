@@ -13,7 +13,8 @@
     PREGUNTA: 'No identificó la pregunta', DATOS_FALTAN: 'Faltó marcar un dato', DATOS_DE_MAS: 'Marcó un dato que sobra', PLAN_OPERACION: 'Operación equivocada',
     PLAN_ORDEN: 'Orden equivocado', PLAN_INCOMPLETO: 'Plan incompleto', RESTO_INTERPRETACION: 'No supo qué hacer con el resto', UNIDAD: 'Unidad equivocada',
     DETECCION_OMITIDA: 'No vio un error', FALSA_ALARMA: 'Marcó error donde no había', MOTIVO: 'Eligió mal la causa', CERO_PERDIDO: 'Perdió o agregó un cero',
-    MEZCLA_ESTRATEGIA: 'Redondeó sin compensar', MITAD_AUTOMATICA: 'Respondió la mitad del dividendo', RESERVA: 'Se llevó mal', OTRO: 'Otro'
+    MEZCLA_ESTRATEGIA: 'Redondeó sin compensar', MITAD_AUTOMATICA: 'Respondió la mitad del dividendo', RESERVA: 'Se llevó mal', OTRO: 'Otro',
+    ANOTO_TODO: 'Anotó el número entero sin llevarse', SUMA: 'Suma de las filas mal hecha'
   };
 
   function ejemplo(e) {

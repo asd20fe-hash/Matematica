@@ -84,3 +84,11 @@ El prompt usa nombres ilustrativos. La API real, leída en `core/core.js`, `acti
 **Colores.** Se agregaron los tokens `--sobre-acento` y `--velo` (texto sobre el color de acento y fondo de los diálogos) con versión clara y oscura, en lugar de `#fff` y `rgba()` sueltos.
 
 **Shell v2.1.** Se subió la versión del shell (`index.html`) porque cambió Ajustes de padres. El `.ver` de la pantalla de perfiles ahora muestra v2.1; el core sigue en v2.0.
+
+## 4. Multiplicación paso a paso (2026-10-18)
+
+**Sin los datos del libro.** La foto del libro con los tipos de ejercicios de multiplicación no quedó guardada en el repo, así que la actividad sigue el algoritmo convencional de la carpeta: por una cifra (niveles 1 y 2) y por dos cifras con el 0 en la segunda fila y la suma de las filas (niveles 3 y 4). Si el libro pide otra forma (descomposición, por partes, sin el 0), se agrega como tipo nuevo.
+
+**El 0 de la segunda fila se pide.** Es un paso propio (`cero`) con el error `CERO_OMITIDO`, porque correr mal la fila es el error típico. Alternativa descartada: dejar el lugar vacío.
+
+**Reservas.** Solo se ven las de la fila que se está multiplicando (las de la fila anterior confunden); las de la suma se escriben solas. Errores nuevos: `ANOTO_TODO` (anotó 42 en vez de 2) y `SUMA`.
