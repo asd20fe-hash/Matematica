@@ -10,8 +10,8 @@
      1: 2-3 cifras × 1 cifra, todos los pasos (multiplico, sumo lo que me llevo, anoto, me llevo).
      2: 3-4 cifras × 1 cifra (a veces con un 0 en el medio), multiplico y sumo en un solo paso.
      3: 2-3 cifras × 2 cifras, la cuenta mental de cada columna, el 0 de la segunda fila y la suma; estimación.
-     4: 3 cifras × 2 cifras como en la carpeta: se corrige al final con "Revisar mi cuenta". */
-  var NIVELES = { 1: { la: [2, 3], lb: 1 }, 2: { la: [3, 4], lb: 1, cero: 0.3 }, 3: { la: [2, 3], lb: 2 }, 4: { la: [3, 3], lb: 2 } };
+     4: 3-4 cifras × 2 cifras como en la carpeta: se corrige al final con "Revisar mi cuenta". */
+  var NIVELES = { 1: { la: [2, 3], lb: 1 }, 2: { la: [3, 4], lb: 1, cero: 0.3 }, 3: { la: [2, 3], lb: 2 }, 4: { la: [3, 4], lb: 2 } };
   var RONDA = { 1: 3, 2: 2, 3: 2, 4: 1 }, MAX_NIVEL = 4;
   var CONTROLES = ['ESTIMACION'];
   var LUGARES = ['unidades', 'decenas', 'centenas', 'unidades de mil', 'decenas de mil'];

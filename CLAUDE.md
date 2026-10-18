@@ -4,7 +4,7 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 
 ## Qué es
 
-"Matemática": app de práctica de matemática para Luz (1ro, 6 años) e Ian (4to, 10 años). Un shell con perfiles y menú abre actividades independientes. Luz tiene la Tabla del 100 (`actividades/1ro-tabla100/`), Escritura, Lectura e Inglés (`actividades/1ro-escritura/`, `actividades/1ro-lectura/`, `actividades/1ro-ingles/`) y Mi mascota en inglés (`actividades/1ro-ingles-mascota/`, 3D); Ian, las actividades de refuerzo de 4to y las de fracciones (`actividades/4to-*`). El diseño de la estructura está en `PLAN.md`.
+"Matemática": app de práctica de matemática para Luz (1ro, 6 años) e Ian (4to, 10 años). Un shell con perfiles y menú abre actividades independientes. Luz tiene la Tabla del 100 (`actividades/1ro-tabla100/`), Escritura, Lectura e Inglés (`actividades/1ro-escritura/`, `actividades/1ro-lectura/`, `actividades/1ro-ingles/`) y Mi mascota en inglés (`actividades/1ro-ingles-mascota/`, 3D); Ian, las actividades de refuerzo de 4to las de fracciones y las Tablas de multiplicar con la tabla pitagórica (`actividades/4to-*`). El diseño de la estructura está en `PLAN.md`.
 
 - **Ejecutar:** abrir `index.html` en el navegador, o servir la carpeta (`python -m http.server`). Con `file://` Chrome comparte localStorage entre archivos y Firefox lo aísla por archivo; con `http://localhost` todo se comparte. El perfil, el tema y el fondo viajan también por la URL (`?p=luz&t=dark&f=oceano`). Hace falta internet para three.js r128 (cdnjs) y la fuente Fredoka.
 - **Pruebas** (node, sin dependencias): `node tests/ingles/run.js`, `node tests/lectoescritura-1ro/run.js`, `node tests/refuerzo-4to/run.js` y `node tests/fracciones-4to/run.js`.
@@ -15,7 +15,8 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 ## Estructura
 
 ```
-index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN y "Reiniciar progreso" (v2.6)
+index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN y "Reiniciar progreso" (v2.7)
+manifest.webmanifest    instalación como app en pantalla completa (íconos en core/iconos/; el shell lo enlaza solo con http/https)
 perfiles.js             MATE.perfiles = [{id,nombre,grado,avatar,color}] + los creados en el dispositivo
 core/core.css           tokens claro/oscuro, estilos base y fondos
 core/core.js            global MATE (único global), con la cola de la nube
@@ -30,7 +31,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 ## Reglas
 
 - **Sin compilar:** sin bundlers, npm ni build. Varios archivos, scripts clásicos (sin ES modules ni `fetch` local, porque no funcionan en `file://`), todo colgado de `MATE`.
-- **Versiones:** el shell tiene la suya (v2.6) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
+- **Versiones:** el shell tiene la suya (v2.7) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
 - **Modo claro/oscuro:** tokens CSS en `:root` con overrides por `[data-theme]` (media query y atributo). Todo color o elemento nuevo tiene que verse bien en los dos modos.
 - **Textos en español rioplatense con voseo** ("Elegí", "Probá"); comentarios y logs también en español. Cada actividad decide su tono y tipografía: la de Luz usa frases cortas y MAYÚSCULAS de imprenta; eso no es regla del shell.
 - Estilo compacto: nombres cortos, varias sentencias por línea, sin frameworks.
@@ -46,6 +47,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - `MATE.ejercicio(act, ev)`: registra un intento del perfil activo y lo encola para la nube. `MATE.nube`: `enviar(e)` (cola en `mate.global.nube.cola`, lotes de 300, reintenta sin internet), `vaciar()`, `leer(clave)`, `subirHistorial()`, `pendientes()`, `estado()`. La URL del Apps Script va en `NUBE_URL` (core.js) o en `mate.global.nube.url`; cada evento lleva un `id` estable y la planilla descarta los repetidos.
 - `MATE.irMenu()` y `MATE.abrir(id)`: navegan conservando `?p=&t=&f=`. `MATE.raiz`: URL de la raíz del proyecto.
 - `MATE.log(tag, ...)`, `MATE.ver(el)`.
+- `MATE.pantalla` `{disponible, activa(), instalada(), alternar(), boton(junto)}`: core.js pone solo el botón ⛶ antes de `#tema`/`#themeBtn` en cada página. Queda prendida en `mate.global.pantalla` y se vuelve a pedir con el primer toque al abrir otra página (el navegador la apaga al navegar). Navegar con `MATE.irMenu`/`MATE.abrir` para que no cuente como apagarla.
 - `MATE.pin.check/set`: en `mate.global.pin`, por defecto 1234 (hash simple; es un candado para chicos, no seguridad).
 
 ## Contrato de una actividad

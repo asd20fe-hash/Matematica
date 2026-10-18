@@ -1,6 +1,8 @@
 /* Multiplicación paso a paso — interfaz.
    ------------------------------------------------------------
    Historial de cambios
+   v1.1.0  (2026-10-18) Cuatro cifras por dos
+     + Nivel 4: multiplicandos de 3 y 4 cifras por 2 cifras (antes solo 3 cifras).
    v1.0.0  (2026-10-18) Primera versión
      + La cuenta parada de la carpeta en el cuaderno cuadriculado: reservas chiquitas arriba, filas, el 0 de la
        segunda fila y la suma final.
@@ -11,7 +13,7 @@
    ------------------------------------------------------------ */
 (function () {
   'use strict';
-  var VERSION = '1.0.0', ACT = '4to-multiplicacion-paso-a-paso', TITULO = 'Multiplicación paso a paso';
+  var VERSION = '1.1.0', ACT = '4to-multiplicacion-paso-a-paso', TITULO = 'Multiplicación paso a paso';
   var MO = REF4_MULMOTOR, UI = REF4_UI, $ = UI.$, esc = UI.esc;
 
   var ctx = UI.base({ act: ACT, titulo: TITULO, version: VERSION, nivelMax: MO.MAX_NIVEL });

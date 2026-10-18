@@ -3,9 +3,13 @@
 <!--
   ============================================================
   Matemática — shell: perfiles, menú de actividades y ajustes de padres
-  Versión: v2.6 (2026-10-15)
+  Versión: v2.7 (2026-10-18)
   ------------------------------------------------------------
   Historial de cambios
+  v2.7  Pantalla completa e instalación
+    + Botón ⛶ de pantalla completa (lo pone core.js v2.4 en todas las páginas y se mantiene al cambiar de sección).
+    + Se puede instalar como app (manifest.webmanifest, solo con http/https): abre sin las barras de Chrome.
+      Botón "📲 Instalar" cuando el navegador lo ofrece.
   v2.6  Reiniciar progreso
     + Ajustes de padres suma "Reiniciar progreso": elegir perfil y actividad (o todas) y borrar lo guardado en este
       dispositivo (niveles, repaso, mascota…). Lo que ya se mandó a la planilla queda.
@@ -40,6 +44,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Matemática</title>
+<meta name="theme-color" content="#8b5cf6">
+<link rel="icon" href="core/iconos/icono-192.png">
+<link rel="apple-touch-icon" href="core/iconos/icono-192.png">
+<script>/* el manifiesto solo con http/https: con file:// el navegador da error al leerlo */
+if(/^https?:$/.test(location.protocol)){ const l=document.createElement('link'); l.rel='manifest'; l.href='manifest.webmanifest'; document.head.appendChild(l); }</script>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="core/core.css">
 <style>
@@ -94,6 +103,7 @@ input{font:inherit;color:var(--text);background:var(--box-bg);border:2px solid v
 </head>
 <body>
 <div class="top">
+  <button class="icon-btn" id="instalarBtn" title="Instalar como app (sin las barras del navegador)" hidden>📲</button>
   <button class="icon-btn" id="lockBtn" title="Ajustes de padres">🔒</button>
   <button class="icon-btn" id="fondoBtn" title="Elegir el fondo" aria-haspopup="menu">🎨</button>
   <button class="icon-btn" id="themeBtn" title="Cambiar modo claro u oscuro">🌙</button>
@@ -115,7 +125,13 @@ input{font:inherit;color:var(--text);background:var(--box-bg);border:2px solid v
 'use strict';
 const $=s=>document.querySelector(s), view=$('#view');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-document.querySelectorAll('.ver').forEach(el=>el.textContent='v2.6');
+document.querySelectorAll('.ver').forEach(el=>el.textContent='v2.7');
+
+/* ==== INSTALAR COMO APP ==== */
+let pedidoInstalar=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); pedidoInstalar=e; $('#instalarBtn').hidden=false; });
+window.addEventListener('appinstalled',()=>{ $('#instalarBtn').hidden=true; MATE.log('app','instalada'); });
+$('#instalarBtn').onclick=()=>{ if(!pedidoInstalar) return; pedidoInstalar.prompt(); pedidoInstalar.userChoice.then(r=>{ MATE.log('app','instalar',r.outcome); pedidoInstalar=null; $('#instalarBtn').hidden=true; }); };
 
 /* ==== TEMA ==== */
 function pintaTema(){ $('#themeBtn').textContent=MATE.tema.oscuro()?'☀️':'🌙'; }

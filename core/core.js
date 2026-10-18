@@ -1,5 +1,10 @@
 /* Matemática — núcleo compartido. Único global: MATE. Script clásico (sin módulos).
    Historial de cambios
+   v2.4  Pantalla completa
+     + MATE.pantalla: botón ⛶ que core.js agrega solo al lado del botón de tema (#tema o #themeBtn) en todas las páginas.
+       Queda prendida en mate.global.pantalla: al abrir otra sección vuelve a pantalla completa con el primer toque
+       (el navegador la apaga al cambiar de página y solo deja pedirla con un toque). Si se sale con el gesto de
+       "atrás" del sistema, se apaga. Se esconde si la app está instalada (display-mode) y no aparece sin la API.
    v2.3  Perfiles nuevos y registro en la nube
      + MATE.perfilesNuevos: perfiles creados desde el menú (mate.global.perfiles), con id único para no mezclarse.
      + MATE.puedeVer(actividad, perfil): por grados (o por ids de perfiles, como antes).
@@ -11,7 +16,7 @@
 */
 (function(){
 'use strict';
-const VERSION='2.3';
+const VERSION='2.4';
 const MATE=window.MATE=window.MATE||{};
 MATE.version=VERSION;
 MATE.perfiles=MATE.perfiles||[];
@@ -123,9 +128,10 @@ MATE.store=act=>{
 };
 
 /* ==== NAVEGACIÓN ==== */
+let saliendo=false;   // al navegar, el navegador sale de pantalla completa: eso no cuenta como apagarla
 const query=()=>{ const p=new URLSearchParams(); if(perfilId) p.set('p',perfilId); const t=MATE.tema.get(); if(t) p.set('t',t); if(fondo!=='aurora') p.set('f',fondo); const s=p.toString(); return s?'?'+s:''; };
-MATE.irMenu=()=>{ location.href=RAIZ+'index.html'+query(); };
-MATE.abrir=act=>{ const a=typeof act==='string'?MATE.actividades.find(x=>x.id===act):act; if(!a) return MATE.log('abrir','actividad inexistente',act); location.href=RAIZ+a.ruta+query(); };
+MATE.irMenu=()=>{ saliendo=true; location.href=RAIZ+'index.html'+query(); };
+MATE.abrir=act=>{ const a=typeof act==='string'?MATE.actividades.find(x=>x.id===act):act; if(!a) return MATE.log('abrir','actividad inexistente',act); saliendo=true; location.href=RAIZ+a.ruta+query(); };
 
 /* ==== PIN (candado para chicos, no seguridad real) ==== */
 const hash=s=>{ let h=5381; for(const c of String(s)) h=((h*33)^c.charCodeAt(0))>>>0; return h.toString(36); };
@@ -209,6 +215,40 @@ MATE.ejercicio=(act,ev)=>{ const p=MATE.perfil(); if(!p) return null; const e=Ob
 window.addEventListener('online',()=>MATE.nube.agendar(1000));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&MATE.nube.pendientes()) MATE.nube.vaciar(); });
 if(MATE.nube.url()) setTimeout(()=>{ MATE.nube.subirHistorial(); MATE.nube.vaciar(); },2500);
+
+/* ==== PANTALLA COMPLETA ==== */
+MATE.pantalla=(()=>{
+  const d=document, el=d.documentElement;
+  const soporta=!!(el.requestFullscreen||el.webkitRequestFullscreen);
+  const activa=()=>!!(d.fullscreenElement||d.webkitFullscreenElement);
+  // app instalada (o ventana en pantalla completa sin el documento): no hace falta el botón. Se mira en el momento,
+  // porque al cargar una página nueva la ventana puede estar todavía saliendo de la pantalla completa anterior.
+  const mm=q=>!!(window.matchMedia&&matchMedia(q).matches);
+  const instalada=()=>mm('(display-mode: standalone)')||(mm('(display-mode: fullscreen)')&&!activa());
+  const pedir=()=>{ try{ const r=(el.requestFullscreen||el.webkitRequestFullscreen).call(el,{navigationUI:'hide'}); if(r&&r.catch) r.catch(e=>MATE.log('pantalla','no se pudo',e.message)); }catch(e){ MATE.log('pantalla','no se pudo',e.message); } };
+  const salir=()=>{ try{ (d.exitFullscreen||d.webkitExitFullscreen).call(d); }catch(e){} };
+  let btn=null;
+  const pinta=()=>{ if(!btn) return; const on=activa(); btn.hidden=instalada(); btn.textContent=on?'🗗':'⛶'; btn.title=on?'Salir de pantalla completa':'Pantalla completa'; btn.setAttribute('aria-pressed',on); };
+  const P={
+    disponible:soporta, activa, instalada,
+    alternar(){ if(activa()){ MATE.global.set('pantalla',false); salir(); } else { MATE.global.set('pantalla',true); pedir(); } },
+    boton(junto){ if(!P.disponible||!junto||d.getElementById('pantallaBtn')) return null;
+      btn=d.createElement('button'); btn.type='button'; btn.id='pantallaBtn'; btn.className=junto.className;
+      btn.onclick=P.alternar; junto.parentNode.insertBefore(btn,junto); pinta(); return btn; }
+  };
+  if(P.disponible){
+    const ev=()=>{ pinta(); if(!activa()&&!saliendo&&!d.hidden) MATE.global.set('pantalla',false); };
+    d.addEventListener('fullscreenchange',ev); d.addEventListener('webkitfullscreenchange',ev);
+    window.addEventListener('pagehide',()=>{ saliendo=true; }); window.addEventListener('beforeunload',()=>{ saliendo=true; });
+    // si estaba prendida, se vuelve a pedir con el primer toque o tecla (el navegador exige un gesto)
+    const reanudar=()=>{ if(MATE.global.get('pantalla',false)&&!activa()&&!instalada()) pedir(); d.removeEventListener('pointerup',reanudar,true); d.removeEventListener('keydown',reanudar,true); };
+    if(MATE.global.get('pantalla',false)){ d.addEventListener('pointerup',reanudar,true); d.addEventListener('keydown',reanudar,true); }
+    const poner=()=>{ P.boton(d.getElementById('tema')||d.getElementById('themeBtn')); setTimeout(pinta,1500); };
+    if(window.matchMedia) ['(display-mode: fullscreen)','(display-mode: standalone)'].forEach(q=>{ const m=matchMedia(q); if(m.addEventListener) m.addEventListener('change',pinta); });
+    if(d.readyState==='loading') d.addEventListener('DOMContentLoaded',poner); else poner();
+  }
+  return P;
+})();
 
 MATE.log('core','listo');
 })();

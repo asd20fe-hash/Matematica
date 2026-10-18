@@ -15,7 +15,7 @@ La cuenta "parada" de la carpeta, interactiva como la división paso a paso: se 
 | 1 | 2-3 cifras × 1 cifra, 3 por ronda | Multiplico (`mult`), sumo lo que me llevo (`sumo`), anoto, me llevo | Borrador "De cabeza" y barra de pasos |
 | 2 | 3-4 cifras × 1 cifra (30 % con un 0 en el medio), 2 por ronda | `columna` (multiplico y sumo juntos), anoto, me llevo | Borrador y barra |
 | 3 | 2-3 cifras × 2 cifras, 2 por ronda | Anoto y me llevo (de cabeza) | Estimación de cifras, el 0 de la segunda fila (`cero`), suma de las filas (`suma`) |
-| 4 | 3 cifras × 2 cifras, 1 por ronda | Como el 3, sin corregir | "Revisar mi cuenta" marca el primer error y "Corregir desde acá" corta las respuestas |
+| 4 | 3-4 cifras × 2 cifras, 1 por ronda | Como el 3, sin corregir | "Revisar mi cuenta" marca el primer error y "Corregir desde acá" corta las respuestas |
 
 En los niveles 1 y 2 la última cifra de la fila se anota sola (es el número que ya calculó). En los 3 y 4 se pide entera ("anotás el 20").
 
