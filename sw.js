@@ -27,6 +27,7 @@ const ARCHIVOS = [
   'actividades/4to-fracciones-comparar/comparar.css', 'actividades/4to-fracciones-comparar/comparar.js', 'actividades/4to-fracciones-comparar/index.html',
   'actividades/4to-fracciones-cuanto-falta/falta.css', 'actividades/4to-fracciones-cuanto-falta/falta.js', 'actividades/4to-fracciones-cuanto-falta/index.html',
   'actividades/4to-fracciones-equivalentes/equivalentes.css', 'actividades/4to-fracciones-equivalentes/equivalentes.js', 'actividades/4to-fracciones-equivalentes/index.html',
+  'actividades/4to-fracciones-gato/gato-logica.js', 'actividades/4to-fracciones-gato/gato.css', 'actividades/4to-fracciones-gato/gato.js', 'actividades/4to-fracciones-gato/index.html',
   'actividades/4to-fracciones-muro/index.html', 'actividades/4to-fracciones-muro/muro.css', 'actividades/4to-fracciones-muro/muro.js',
   'actividades/4to-fracciones-partes/index.html', 'actividades/4to-fracciones-partes/partes.css', 'actividades/4to-fracciones-partes/partes.js',
   'actividades/4to-fracciones-potes-vasos/index.html', 'actividades/4to-fracciones-potes-vasos/potes.css', 'actividades/4to-fracciones-potes-vasos/potes.js',
