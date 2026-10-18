@@ -3,9 +3,12 @@
 <!--
   ============================================================
   Matemática — shell: perfiles, menú de actividades y ajustes de padres
-  Versión: v2.7 (2026-10-18)
+  Versión: v2.8 (2026-10-18)
   ------------------------------------------------------------
   Historial de cambios
+  v2.8  Modo sin conexión
+    + Abajo dice "✈️ Lista para usar sin internet" cuando la app ya está guardada (service worker de core.js v2.5)
+      y "📴 Sin internet: funciona igual" cuando no hay conexión.
   v2.7  Pantalla completa e instalación
     + Botón ⛶ de pantalla completa (lo pone core.js v2.4 en todas las páginas y se mantiene al cambiar de sección).
     + Se puede instalar como app (manifest.webmanifest, solo con http/https): abre sin las barras de Chrome.
@@ -110,7 +113,7 @@ input{font:inherit;color:var(--text);background:var(--box-bg);border:2px solid v
 </div>
 <h1>Matemática</h1>
 <div id="view" style="width:100%;display:flex;flex-direction:column;align-items:center"></div>
-<div class="foot">Matemática <span class="ver"></span></div>
+<div class="foot">Matemática <span class="ver"></span> <span id="offline"></span></div>
 <script src="core/core.js"></script>
 <script src="perfiles.js"></script>
 <script src="actividades/registro.js"></script>
@@ -125,7 +128,13 @@ input{font:inherit;color:var(--text);background:var(--box-bg);border:2px solid v
 'use strict';
 const $=s=>document.querySelector(s), view=$('#view');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-document.querySelectorAll('.ver').forEach(el=>el.textContent='v2.7');
+document.querySelectorAll('.ver').forEach(el=>el.textContent='v2.8');
+
+/* ==== SIN CONEXIÓN ==== */
+function pintaOffline(){ const e=MATE.offline.estado(); $('#offline').textContent=!e.enLinea?'· 📴 Sin internet: funciona igual':(e.listo?'· ✈️ Lista para usar sin internet':''); }
+['online','offline'].forEach(ev=>window.addEventListener(ev,pintaOffline));
+if(navigator.serviceWorker) navigator.serviceWorker.addEventListener('controllerchange',pintaOffline);
+pintaOffline();
 
 /* ==== INSTALAR COMO APP ==== */
 let pedidoInstalar=null;

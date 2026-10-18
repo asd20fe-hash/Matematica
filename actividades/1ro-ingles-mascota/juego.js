@@ -52,6 +52,11 @@
        un helado que se cae…): la mascota la siente y Luz dice cómo está ("How is Mimi?").
      + Temas nuevos: cafe, platos y escuela, con sus juegos "Snack time!", "Dinner time!" y "Pack the bag!" (también en la
        lección, en 🎮 Juegos y en el álbum).
+   v1.7.0  (2026-10-18) Merienda
+     + 🧁 Merienda en la casa: Luz le da un cafecito ☕, un cupcake 🧁 o un juguito 🧃 cuando quiera (tocar o arrastrar
+       a la boca). La profe dice qué es ("Some coffee!") y la mascota reacciona: con el café salta y se llena de energía,
+       con el cupcake baila y con el jugo aplaude. Si tiene la panza llena dice "I'm full!" (el café igual lo toma).
+       No se registra: es parte del cuidado.
    ------------------------------------------------------------
    El entorno J que reciben los juegos (ING_JUEGOS) se arma en entorno(): M, O, pip, hoot, az, nivel, nombre, debug,
    posiciones(n), responder(w) → {ok, mostrar, ignorar}, opciones(lista), aviso(icono, texto), pintado(color), alimentar(n),
@@ -60,7 +65,7 @@
    Un paso puede traer su propio jugar, orden, icono y errorFn(esperada, elegida) (pizarrón y entradas del cine, sin juego registrado). */
 (function () {
   'use strict';
-  var VERSION = '1.6.0', ACT = '1ro-ingles-mascota';
+  var VERSION = '1.7.0', ACT = '1ro-ingles-mascota';
   var ROPA = ING_ROPA, R3 = ING_ROPA3D, AL = ING_ALBUM, SA = ING_SALIDAS, V = ING_VOCAB, JG = ING_JUEGOS, LC = ING_LECC, PET = ING_PET, TD = ING_TIENDA, VZ = ING_VOZ, O = ING_OBJ3D, RP = REPASO1, UI = REF4_UI;
   var esc = UI1.esc, TX = UI1.txt, F = UI1.frase;
   var ctx = UI1.base({ act: ACT, version: VERSION, titulo: 'Mi mascota', alCambiarCaso: function () { pintarHUD(); if (S.banner) banner(S.banner); } });
@@ -147,7 +152,7 @@
         LUGARES.map(function (l) { return '<button class="ing-btn ing-lugar' + (S.sugerido === l[0] ? ' late' : '') + '" data-l="' + l[0] + '" title="' + l[2] + '">' + l[1] + '</button>'; }).join('') +
         (TD.cuantas(pet) ? '<button class="ing-btn ing-lugar' + (S.recienCompro ? ' main late' : '') + '" id="b-comida" title="Su comida">🧺<b>' + TD.cuantas(pet) + '</b></button>' : '');
       $('#b-leccion').onclick = leccion; $('#b-juegos').onclick = menuJuegos; $('#b-album').onclick = function () { album(); }; if ($('#b-comida')) $('#b-comida').onclick = despensa;
-      ab.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { ({ super: supermercado, salir: menuSalidas, ropa: cambiador, bano: bano, dormir: dormitorio, patio: patio })[b.dataset.l](); }; });
+      ab.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { ({ super: supermercado, salir: menuSalidas, ropa: cambiador, bano: bano, dormir: dormitorio, patio: patio, merienda: merienda })[b.dataset.l](); }; });
     } else if (S.modo === 'leccion' || S.modo === 'libre' || S.modo === 'escuela') {
       ab.innerHTML = '<button class="ing-btn" id="b-salir" title="Volver a la casa">✖</button><div class="ing-prog ing-card">' + S.res.map(function (r, i) {
         return '<i class="' + (r || (i === S.k ? 'actual' : '')) + '"></i>'; }).join('') + '</div><span style="width:64px"></span>';
@@ -173,13 +178,16 @@
       $('#b-salir').onclick = function () { VZ.callar(); casa(false); };
       $('#b-vista').onclick = function () { if (!S.ocupado) verRopa(S.vista === 'mia' ? 'tienda' : 'mia'); };
       if ($('#b-pag')) $('#b-pag').onclick = function () { if (S.ocupado) return; S.pag = (S.pag + 1) % S.paginas; VZ.sfx('woosh'); mostrarRopa(S.token); };
+    } else if (S.modo === 'merienda') {
+      ab.innerHTML = '<button class="ing-btn" id="b-salir" title="Volver a la casa">🏠 ' + esc(F('Casa')) + '</button>';
+      $('#b-salir').onclick = function () { VZ.callar(); casa(false); };
     } else if (S.modo === 'despensa') {
       ab.innerHTML = '<button class="ing-btn" id="b-salir" title="Volver a la casa">🏠 ' + esc(F('Casa')) + '</button>' + (TD.cuantas(pet) ? '' : '<button class="ing-btn main" id="b-super"><span class="ic">🛒</span>' + esc(F('Súper')) + '</button>');
       $('#b-salir').onclick = function () { VZ.callar(); casa(false); };
       if ($('#b-super')) $('#b-super').onclick = supermercado;
     } else ab.innerHTML = '';
   }
-  var LUGARES = [['super', '🛒', 'Súper'], ['salir', '🚌', 'Salidas'], ['ropa', '👗', 'Ropa'], ['bano', '🛁', 'Baño'], ['dormir', '🛏️', 'Dormitorio'], ['patio', '⚽', 'Patio']];
+  var LUGARES = [['super', '🛒', 'Súper'], ['salir', '🚌', 'Salidas'], ['ropa', '👗', 'Ropa'], ['bano', '🛁', 'Baño'], ['dormir', '🛏️', 'Dormitorio'], ['patio', '⚽', 'Patio'], ['merienda', '🧁', 'Merienda']];
   function menuJuegos() {
     velo('<h2>🎮 ' + esc(F('Juegos')) + '</h2><div class="ing-nombres juegos">' + JG.lista().map(function (j) {
       return '<button class="ing-btn" data-j="' + j.id + '"><span class="ic">' + j.icono + '</span>' + esc(j.nombre.replace('Pip', nombreVoz())) + '</button>'; }).join('') +
@@ -628,6 +636,59 @@
       if (S.dadas >= 3 && TD.cuantas(pet)) { pipDice('Yummy! Thank you!', function () { if (vivo(tk)) casa(false); }); return; }
       darComida();
     } });
+  }
+
+  /* ---------- merienda: un cafecito, un cupcake o un juguito (no se registra: es parte del cuidado) ---------- */
+  var MERIENDA = [
+    { w: { en: 'COFFEE', es: 'CAFECITO', img: '☕', art: 'some' }, dice: 'Mmm, coffee! I have energy!', efecto: { energia: 15, alegria: 3 }, hace: 'jump' },
+    { w: 'CUPCAKE', dice: 'Yummy! I love cupcakes!', efecto: { panza: 12, alegria: 6 }, hace: 'dance' },
+    { w: 'JUICE', dice: 'Mmm, juice! Thank you!', efecto: { panza: 8, alegria: 4 }, hace: 'clap' }
+  ];
+  function merienda() {
+    var tk = entrar('merienda', null);
+    banner({ icono: '🧁', en: 'Snack time!', es: 'Dale algo rico a ' + nombre() });
+    profe('Snack time! What do you want to give ' + nombreVoz() + '?');
+    ponerMerienda(tk);
+  }
+  function ponerMerienda(tk) {
+    if (!vivo(tk)) return;
+    var pos = posiciones(MERIENDA.length), listo = false;
+    if (M.vertical()) pos.forEach(function (p) { p.x *= 0.62; });   // en vertical, que no se corten las de los costados
+    var fichas = MERIENDA.map(function (m, i) {
+      var w = typeof m.w === 'string' ? V.por(m.w) : m.w, f = O.ficha(M, w, 0.8);
+      f.position.copy(pos[i]); f.scale.setScalar(0.01); f.userData.casa = pos[i].clone(); f.userData.m = m; f.userData.w = w; M.scene.add(f);
+      M.esperar(i * 90, function () { VZ.sfx('pop'); M.tween(450, function (k) { f.scale.setScalar(Math.max(0.01, k)); }, null, 'rebote'); });
+      M.arrastrable(f, {
+        tap: function () { dar(f); },
+        inicio: function () { if (!listo) { f.scale.setScalar(1.15); VZ.sfx('tick'); } },
+        mover: function (p) { if (listo) return; f.position.set(p.x, Math.max(0, p.y - 0.5), f.userData.casa.z); pip.mirarA(f.position); },
+        soltar: function () {
+          if (listo) return; f.scale.setScalar(1);
+          var a = M.aPantalla(f.position.clone().setY(f.position.y + 0.5)), b = M.aPantalla(pip.posBoca()), lado = Math.min(innerWidth, innerHeight);
+          if (Math.hypot(a.x - b.x, a.y - b.y) < lado * 0.2) dar(f); else volver(f);
+        }
+      });
+      return f;
+    });
+    S.opciones = fichas.map(function (f) { return { w: f.userData.w, elegir: function () { dar(f); } }; });
+    function volver(f) { var d = f.position.clone(); M.tween(350, function (k) { f.position.lerpVectors(d, f.userData.casa, k); }, null, 'sale'); }
+    function dar(f) {
+      if (listo || !vivo(tk)) return;
+      var m = f.userData.m, w = f.userData.w;
+      if (m.efecto.panza && pet.panza >= 95) { volver(f); O.temblar(M, f); pip.no(); pipDice("I'm full! Thank you!"); return; }
+      listo = true; S.opciones = null; banner(null);
+      fichas.forEach(function (x) { if (x !== f) M.tween(300, function (k) { x.scale.setScalar(Math.max(0.01, 1 - k)); }, function () { M.limpiar([x]); }); });
+      var comida = f.userData.sprite; M.scene.attach(comida); M.quitarToque(f);
+      M.tween(300, function (k) { f.scale.setScalar(Math.max(0.01, 1 - k)); }, function () { M.limpiar([f]); });
+      profe(frase(w).charAt(0).toUpperCase() + frase(w).slice(1) + '!');
+      chip(dib(w) + ' ' + esc(TX(w.en)) + ' = ' + esc(TX(w.es)), false, 3500);
+      pip.comer(comida, function () {
+        if (!vivo(tk)) return;
+        for (var k in m.efecto) PET.sumar(pet, k, m.efecto[k]);
+        guardar(); pintarHUD();
+        pip.hacer(m.hace, function () { if (vivo(tk)) pipDice(m.dice, function () { if (vivo(tk)) M.esperar(400, function () { ponerMerienda(tk); }); }); });
+      });
+    }
   }
 
   /* ---------- lugares de la casa: baño, dormitorio y patio ---------- */
@@ -1139,7 +1200,7 @@
   if (ctx.debug) {
     var fps = document.createElement('div'); fps.className = 'ing-fps'; document.body.appendChild(fps);
     setInterval(function () { fps.textContent = M.fps + ' fps · ' + S.modo + (S.paso && S.paso.w ? ' · ' + S.paso.w.en : '') + ' · nivel ' + nivel(); }, 500);
-    window.__pip = { S: S, M: M, pip: pip, pet: pet, rep: rep, inicio: function () { $('#v-jugar').click(); },
+    window.__pip = { S: S, M: M, pip: pip, pet: pet, rep: rep, merienda: function () { merienda(); }, darMerienda: function (i) { S.opciones[i].elegir(); }, inicio: function () { $('#v-jugar').click(); },
       elegir: function (en) { var o = (S.opciones || []).filter(function (x) { return x.w.en === en; })[0]; if (o) o.elegir(); return !!o; },
       correcta: function () { var p = S.paso, o = (S.opciones || []).filter(function (x) { return x.w === p.w && (!p.color || x.color === p.color); })[0]; if (o) o.elegir(); return !!o; },
       album: function (t) { album(t); }, figurita: function (i) { var b = $('#panel').querySelector('[data-i="' + i + '"]'); if (b) b.click(); return S.album && S.album.cartas[i] && S.album.cartas[i].w.en; },

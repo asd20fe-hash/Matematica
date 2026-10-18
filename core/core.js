@@ -1,5 +1,9 @@
 /* Matemática — núcleo compartido. Único global: MATE. Script clásico (sin módulos).
    Historial de cambios
+   v2.5  Modo sin conexión
+     + Registra el service worker (sw.js, en la raíz) con http/https: la app queda guardada y anda sin internet.
+     + Una vez cada 6 h, con internet, le pide que vuelva a bajar todo (mate.global.offline.ts).
+     + MATE.offline: {disponible(), listo(), estado()} para mostrarlo en el shell.
    v2.4  Pantalla completa
      + MATE.pantalla: botón ⛶ que core.js agrega solo al lado del botón de tema (#tema o #themeBtn) en todas las páginas.
        Queda prendida en mate.global.pantalla: al abrir otra sección vuelve a pantalla completa con el primer toque
@@ -16,7 +20,7 @@
 */
 (function(){
 'use strict';
-const VERSION='2.4';
+const VERSION='2.5';
 const MATE=window.MATE=window.MATE||{};
 MATE.version=VERSION;
 MATE.perfiles=MATE.perfiles||[];
@@ -248,6 +252,24 @@ MATE.pantalla=(()=>{
     if(d.readyState==='loading') d.addEventListener('DOMContentLoaded',poner); else poner();
   }
   return P;
+})();
+
+/* ==== SIN CONEXIÓN (service worker) ==== */
+MATE.offline=(()=>{
+  const sw=navigator.serviceWorker, O={
+    disponible:()=>!!sw&&/^https?:$/.test(location.protocol),
+    listo:()=>!!(sw&&sw.controller),
+    estado:()=>({disponible:O.disponible(),listo:O.listo(),enLinea:navigator.onLine,ultima:MATE.global.get('offline.ts',0)})
+  };
+  if(!O.disponible()) return O;
+  const pedir=reg=>{ const w=reg.active||(sw.controller); if(!w||!navigator.onLine) return; if(Date.now()-MATE.global.get('offline.ts',0)<6*3600e3) return;
+    MATE.global.set('offline.ts',Date.now()); w.postMessage({tipo:'actualizar'}); MATE.log('offline','actualizando la copia guardada'); };
+  sw.addEventListener('message',e=>{ if(e.data&&e.data.tipo==='actualizado') MATE.log('offline','copia al día',e.data.ok,'archivos'); });
+  window.addEventListener('load',()=>{
+    sw.register(RAIZ+'sw.js').then(reg=>{ MATE.log('offline','service worker',reg.active?'activo':'instalando'); if(reg.active) pedir(reg); else MATE.global.set('offline.ts',Date.now()); })
+      .catch(e=>MATE.log('offline','no se pudo registrar',e.message));
+  });
+  return O;
 })();
 
 MATE.log('core','listo');

@@ -6,8 +6,9 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 
 "Matemática": app de práctica de matemática para Luz (1ro, 6 años) e Ian (4to, 10 años). Un shell con perfiles y menú abre actividades independientes. Luz tiene la Tabla del 100 (`actividades/1ro-tabla100/`), Escritura, Lectura e Inglés (`actividades/1ro-escritura/`, `actividades/1ro-lectura/`, `actividades/1ro-ingles/`) y Mi mascota en inglés (`actividades/1ro-ingles-mascota/`, 3D); Ian, las actividades de refuerzo de 4to las de fracciones y las Tablas de multiplicar con la tabla pitagórica (`actividades/4to-*`). El diseño de la estructura está en `PLAN.md`.
 
-- **Ejecutar:** abrir `index.html` en el navegador, o servir la carpeta (`python -m http.server`). Con `file://` Chrome comparte localStorage entre archivos y Firefox lo aísla por archivo; con `http://localhost` todo se comparte. El perfil, el tema y el fondo viajan también por la URL (`?p=luz&t=dark&f=oceano`). Hace falta internet para three.js r128 (cdnjs) y la fuente Fredoka.
-- **Pruebas** (node, sin dependencias): `node tests/ingles/run.js`, `node tests/lectoescritura-1ro/run.js`, `node tests/refuerzo-4to/run.js` y `node tests/fracciones-4to/run.js`.
+- **Ejecutar:** abrir `index.html` en el navegador, o servir la carpeta (`python -m http.server`). Con `file://` Chrome comparte localStorage entre archivos y Firefox lo aísla por archivo; con `http://localhost` todo se comparte. El perfil, el tema y el fondo viajan también por la URL (`?p=luz&t=dark&f=oceano`). Hace falta internet la primera vez para three.js r128 (cdnjs) y las fuentes; con http/https después quedan guardadas (`sw.js`).
+- **Sin conexión:** `sw.js` guarda la app; con internet los archivos propios salen siempre de la red (la copia guardada se usa solo sin conexión). **Al agregar, sacar o renombrar un archivo** correr `node tests/offline/run.js --escribir` (rearma `ARCHIVOS`); la prueba falla si la lista no coincide. Un recurso externo nuevo va en `EXTERNOS`.
+- **Pruebas** (node, sin dependencias): `node tests/offline/run.js`, `node tests/ingles/run.js`, `node tests/lectoescritura-1ro/run.js`, `node tests/refuerzo-4to/run.js` y `node tests/fracciones-4to/run.js`.
 - **Depurar:** logs con prefijo `[Mate vX.Y]` (core y shell) y `[<actividad> vX.Y]` en cada actividad; muchas tienen `?debug=1`.
 - **Publicación:** se usa desde GitHub Pages (https://asd20fe-hash.github.io/Matematica/), que publica `main` solo. Hace falta `.nojekyll` en la raíz (sin él Jekyll no publica las carpetas que empiezan con `_`, como `_comun-4to`).
 - **Probar sin ensuciar la planilla:** antes de abrir actividades en un navegador de prueba, desviar la nube con `localStorage.setItem('mate.global.nube.url', JSON.stringify('http://localhost:9/nada'))` en un perfil aparte. La clave de lectura de la planilla nunca va en el código: se escribe a mano en Ajustes de padres.
@@ -15,7 +16,8 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 ## Estructura
 
 ```
-index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN y "Reiniciar progreso" (v2.7)
+index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN y "Reiniciar progreso" (v2.8)
+sw.js                   modo sin conexión: guarda toda la app (ARCHIVOS), three.js y las fuentes; core.js lo registra con http/https
 manifest.webmanifest    instalación como app en pantalla completa (íconos en core/iconos/; el shell lo enlaza solo con http/https)
 perfiles.js             MATE.perfiles = [{id,nombre,grado,avatar,color}] + los creados en el dispositivo
 core/core.css           tokens claro/oscuro, estilos base y fondos
@@ -31,7 +33,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 ## Reglas
 
 - **Sin compilar:** sin bundlers, npm ni build. Varios archivos, scripts clásicos (sin ES modules ni `fetch` local, porque no funcionan en `file://`), todo colgado de `MATE`.
-- **Versiones:** el shell tiene la suya (v2.7) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
+- **Versiones:** el shell tiene la suya (v2.8) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
 - **Modo claro/oscuro:** tokens CSS en `:root` con overrides por `[data-theme]` (media query y atributo). Todo color o elemento nuevo tiene que verse bien en los dos modos.
 - **Textos en español rioplatense con voseo** ("Elegí", "Probá"); comentarios y logs también en español. Cada actividad decide su tono y tipografía: la de Luz usa frases cortas y MAYÚSCULAS de imprenta; eso no es regla del shell.
 - Estilo compacto: nombres cortos, varias sentencias por línea, sin frameworks.
@@ -48,6 +50,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - `MATE.irMenu()` y `MATE.abrir(id)`: navegan conservando `?p=&t=&f=`. `MATE.raiz`: URL de la raíz del proyecto.
 - `MATE.log(tag, ...)`, `MATE.ver(el)`.
 - `MATE.pantalla` `{disponible, activa(), instalada(), alternar(), boton(junto)}`: core.js pone solo el botón ⛶ antes de `#tema`/`#themeBtn` en cada página. Queda prendida en `mate.global.pantalla` y se vuelve a pedir con el primer toque al abrir otra página (el navegador la apaga al navegar). Navegar con `MATE.irMenu`/`MATE.abrir` para que no cuente como apagarla.
+- `MATE.offline` `{disponible(), listo(), estado()}`: registra `sw.js` y cada 6 h con internet le pide que vuelva a bajar todo (`mate.global.offline.ts`).
 - `MATE.pin.check/set`: en `mate.global.pin`, por defecto 1234 (hash simple; es un candado para chicos, no seguridad).
 
 ## Contrato de una actividad
