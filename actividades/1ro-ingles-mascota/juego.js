@@ -64,6 +64,10 @@
      + ☕ Café y 🍽️ restaurante libres: le da lo que quiera del menú y al final paga la cuenta.
      + 🛁 Baño libre (frotar con el dedo hasta que queda limpita) y 🛏️ dormitorio directo a la cama.
      + En la lección, los juegos y la escuela todo sigue como siempre. Lo libre no se registra.
+   v1.9.0  (2026-10-20) Tiempo de juego
+     + Se registran los tramos de tiempo, de tal hora a tal hora, en modo libre y en aprendizaje (evento tipo:'tramo',
+       tema 'libre' o 'aprendizaje', desde/hasta y ms). Sin tocar la pantalla 3 minutos o con la pestaña oculta, el tramo
+       se corta. Resumen de hoy en Ajustes de padres.
    ------------------------------------------------------------
    El entorno J que reciben los juegos (ING_JUEGOS) se arma en entorno(): M, O, pip, hoot, az, nivel, nombre, debug,
    posiciones(n), responder(w) → {ok, mostrar, ignorar}, opciones(lista), aviso(icono, texto), pintado(color), alimentar(n),
@@ -72,7 +76,7 @@
    Un paso puede traer su propio jugar, orden, icono y errorFn(esperada, elegida) (pizarrón y entradas del cine, sin juego registrado). */
 (function () {
   'use strict';
-  var VERSION = '1.8.0', ACT = '1ro-ingles-mascota';
+  var VERSION = '1.9.0', ACT = '1ro-ingles-mascota';
   var ROPA = ING_ROPA, R3 = ING_ROPA3D, AL = ING_ALBUM, SA = ING_SALIDAS, V = ING_VOCAB, JG = ING_JUEGOS, LC = ING_LECC, PET = ING_PET, TD = ING_TIENDA, VZ = ING_VOZ, O = ING_OBJ3D, RP = REPASO1, UI = REF4_UI;
   var esc = UI1.esc, TX = UI1.txt, F = UI1.frase;
   var ctx = UI1.base({ act: ACT, version: VERSION, titulo: 'Mi mascota', alCambiarCaso: function () { pintarHUD(); if (S.banner) banner(S.banner); } });
@@ -122,6 +126,33 @@
   // Modo libre (pet.sinPedidos): la mascota no habla ni pide; en la lección, los juegos y la escuela sigue como siempre.
   var ENSENA = { leccion: 1, libre: 1, escuela: 1 };
   function libre() { return !!pet.sinPedidos && !ENSENA[S.modo]; }
+
+  /* ---------- tiempo: tramos de modo libre y de aprendizaje, de tal hora a tal hora ---------- */
+  // Aprendizaje: la lección, los juegos, la escuela y todo lo de la casa con el modo libre apagado (ahí la mascota pide
+  // y se registran los pasos). Libre: con 🕊️ prendido. El tramo se corta al cambiar, con la pestaña oculta o si no tocó
+  // la pantalla en 3 minutos (termina al último toque). Va a la planilla como tipo:'tramo' y queda en tramos (los últimos 300).
+  var PAUSA = 3 * 60000, tramo = null, ultToque = Date.now();
+  var hhmm = function (t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+  function claseTiempo() { return !pet.nacido || S.modo === 'inicio' ? null : (ENSENA[S.modo] || !pet.sinPedidos ? 'aprendizaje' : 'libre'); }
+  function cerrarTramo(fin) {
+    if (!tramo) return;
+    var t = tramo; tramo = null; fin = Math.max(t.desde, fin); var ms = fin - t.desde;
+    if (ms < 10000) return;
+    ctx.reg.evento({ tipo: 'tramo', tema: t.clase, paso: t.clase, desde: hhmm(t.desde), hasta: hhmm(fin), respuesta: hhmm(t.desde) + '-' + hhmm(fin), ms: ms, inicio: t.desde, fin: fin });
+    var l = ctx.store.get('tramos', []) || []; l.push({ clase: t.clase, desde: t.desde, hasta: fin }); if (l.length > 300) l = l.slice(-300);
+    try { ctx.store.set('tramos', l); } catch (e) { /* sin espacio */ }
+    ctx.reg.flush(); ctx.log('tramo', t.clase, hhmm(t.desde) + '-' + hhmm(fin), Math.round(ms / 60000) + ' min');
+  }
+  function vigilarTramo() {
+    var ahora = Date.now(); if (VZ.hablando()) ultToque = ahora;
+    var quieto = ahora - ultToque > PAUSA, c = document.visibilityState === 'visible' && !quieto ? claseTiempo() : null;
+    if (tramo && tramo.clase !== c) cerrarTramo(quieto ? ultToque : ahora);
+    if (!tramo && c) tramo = { clase: c, desde: ahora };
+  }
+  setInterval(vigilarTramo, 5000);
+  document.addEventListener('pointerdown', function () { ultToque = Date.now(); vigilarTramo(); }, true);
+  document.addEventListener('visibilitychange', vigilarTramo);
+  addEventListener('pagehide', function () { cerrarTramo(Date.now()); });
   function pipDice(texto, despues) {
     if (libre()) { if (despues) M.esperar(200, despues); return; }
     VZ.decir(texto, { quien: 'pip', alEmpezar: function () { pip.hablar(true); }, alTerminar: function () { pip.hablar(false); }, despues: despues }); }
@@ -153,6 +184,7 @@
   function chip(html, mal, ms) { var c = $('#chip'); clearTimeout(tChip); if (!html) { c.hidden = true; return; } c.innerHTML = html; c.className = 'ing-chip' + (mal ? ' mal' : ''); c.hidden = false; if (ms) tChip = setTimeout(function () { c.hidden = true; }, ms); }
   function aviso(icono, texto) { var a = $('#aviso'); if (!texto) { a.hidden = true; return; } a.textContent = icono + ' ' + F(texto); a.hidden = false; }
   function pintarHUD() {
+    vigilarTramo();
     var h = PET.NECESIDADES.map(function (n) {
       var c = pet[n.id] < 40 ? 'var(--bad)' : (n.id === 'panza' ? 'var(--warn)' : 'var(--accent2)');
       return '<div class="ing-burbuja ing-card" title="' + n.id + '"><div class="ing-anillo" style="--v:' + Math.round(pet[n.id]) + ';--c:' + c + '"><span>' + n.icono + '</span></div></div>';
@@ -1369,7 +1401,7 @@
       ropa: function () { cambiador(); }, salida: function (id) { salida(id); }, SAL: SAL, hoot: hoot, tocarRopa: function (i) { var x = (S.itemsRopa || [])[i]; if (x) x.tocar(); return x && x.it; }, verRopa: function (v) { verRopa(v); },
       super: function () { supermercado(); }, despensa: function () { despensa(); }, TD: TD, LG: LG,
       libre: function (on) { if (!!pet.sinPedidos !== !!on) alternarLibre(); return !!pet.sinPedidos; }, superLibre: function () { superLibre(); }, comerAfuera: function (m) { comerAfuera(m); },
-      pagarLibre: function () { pagarLibre(); }, banoLibre: function () { banoLibre(); }, frotar: function (n) { for (var i = 0; i < n; i++) frotar(); },
+      pagarLibre: function () { pagarLibre(); }, tramo: function () { return tramo; }, cerrarTramo: function () { cerrarTramo(Date.now()); }, banoLibre: function () { banoLibre(); }, frotar: function (n) { for (var i = 0; i < n; i++) frotar(); },
       bano: function () { bano(); }, dormir: function () { dormitorio(); }, patio: function () { patio(); }, apagar: function () { apagar(); }, despertar: function () { despertar(); },
       patear: function (k, x) { if (S.futbol) S.futbol.patear(k, x); }, burbujas: function () { return (S.burbujas || []).filter(function (b) { return !b.userData.rota; }); },
       pagar: function () { (S.monedas || []).forEach(function (m) { if (m.userData.tocar) m.userData.tocar(); }); },
