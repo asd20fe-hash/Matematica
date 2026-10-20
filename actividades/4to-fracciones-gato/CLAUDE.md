@@ -15,4 +15,4 @@ Niveles: el 1 usa medios, tercios y cuartos (y tiras siempre a la vista); el 2 s
 
 ## Interfaz (`gato.js`)
 
-La cara de Michi cambia sin volver a pintar (`cara()`), así no se borra lo que el chico está escribiendo. Debug: `?debug=1&seed=N&nivel=N&tipo=come` y `window.__fr`.
+Michi y su dueño son de bloques en 3D (`gato3d.js`, `REF4_GATO3D`: `montar`, `estado`, `boca`): un solo renderer, y `montar` mueve el mismo canvas cada vez que se repinta. Sin three.js o WebGL queda el emoji. La cara de Michi cambia sin volver a pintar (`cara()`), así no se borra lo que el chico está escribiendo. Debug: `?debug=1&seed=N&nivel=N&tipo=come` y `window.__fr`.

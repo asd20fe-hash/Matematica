@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 MATE.actividades=[
-  {id:'tabla100',titulo:'Saltos en la Tabla del 100',descripcion:'Sumá y restá saltando en la tabla.',icono:'🔢',grados:['1ro'],ruta:'actividades/1ro-tabla100/index.html',version:'1.9',
+  {id:'tabla100',titulo:'Saltos en la Tabla del 100',descripcion:'Sumá y restá saltando en la tabla.',icono:'🔢',grados:['1ro'],ruta:'actividades/1ro-tabla100/index.html',version:'1.10',
    errores:{SALTO_DIRECCION:'Saltó para el lado contrario (sumó en vez de restar o al revés)',SALTO_FILAS:'Saltó una cantidad de filas equivocada',SALTO_COLUMNA:'Se salió de la columna (mezcló saltos de 10 con saltos de 1)',
      DIEZ_COMO_UNO:'Escribió los dieces sin el cero (3 en vez de 30)',DESARME_DIECES:'Desarmó mal los dieces',DESARME_UNOS:'Desarmó mal los unos',AGRUPA_MAL:'No juntó dieces con dieces y unos con unos',
      DIECES_SIN_CERO:'Sumó los dieces pero sin el cero (5 en vez de 50)',SUMA_DIECES:'Error al sumar los dieces',SUMA_UNOS:'Error al sumar los unos',JUNTA_MAL:'Error al juntar dieces y unos en el resultado',
@@ -40,7 +40,7 @@ MATE.actividades=[
   {id:'4to-fracciones-equivalentes',teoria:true,titulo:'¿Qué son las fracciones equivalentes?',descripcion:'Teoría con dibujos: cortá, juntá y compará para ver que valen lo mismo.',icono:'📖',grados:['4to'],ruta:'actividades/4to-fracciones-equivalentes/index.html',version:'1.0.0',
    stats:()=>MATE.perfiles.filter(p=>p.grado==='4to').map(p=>{ const v=JSON.parse(localStorage.getItem('mate.'+p.id+'.4to-fracciones-equivalentes.progreso')||'null'); if(!v) return p.nombre+' todavía no la abrió.';
      return p.nombre+' vio '+v.vistas.length+' de 5 pantallas'+(v.desafios?'; desafíos: '+v.desafios.ok1+' de '+v.desafios.total+' al primer intento ('+new Date(v.desafios.fecha).toLocaleDateString('es-AR')+').':'; todavía no terminó los desafíos.'); }).join(' ')},
-  {id:'4to-fracciones-gato',nivelMax:3,titulo:'El gato come fracciones',descripcion:'Dale a Michi las fracciones que valen lo que pide y escribí a qué equivalen.',icono:'🐱',grados:['4to'],ruta:'actividades/4to-fracciones-gato/index.html',version:'1.0.0'},
+  {id:'4to-fracciones-gato',nivelMax:3,titulo:'El gato come fracciones',descripcion:'Dale a Michi las fracciones que valen lo que pide y escribí a qué equivalen.',icono:'🐱',grados:['4to'],ruta:'actividades/4to-fracciones-gato/index.html',version:'1.1.0'},
   {id:'4to-fracciones-muro',nivelMax:3,titulo:'Muro de fracciones',descripcion:'Fracciones equivalentes: la misma cantidad escrita de otra forma.',icono:'🧱',grados:['4to'],ruta:'actividades/4to-fracciones-muro/index.html',version:'1.0.2'},
   {id:'4to-fracciones-comparar',nivelMax:3,titulo:'¿Cuál es más?',descripcion:'Compará fracciones con criterios, sin adivinar.',icono:'⚖️',grados:['4to'],ruta:'actividades/4to-fracciones-comparar/index.html',version:'1.0.2'},
   {id:'4to-fracciones-cuanto-falta',nivelMax:3,titulo:'¿Cuánto falta?',descripcion:'Cuánto falta, sumas y restas, y problemas para leer con lupa.',icono:'🧩',grados:['4to'],ruta:'actividades/4to-fracciones-cuanto-falta/index.html',version:'1.0.2'},

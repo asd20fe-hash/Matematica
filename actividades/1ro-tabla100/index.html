@@ -2,9 +2,11 @@
 <!--
   ============================================================
   Saltos en la Tabla del 100 (práctica de matemática, 1er grado)
-  Versión: v1.9 (2026-10-14)
+  Versión: v1.10 (2026-10-19)
   ------------------------------------------------------------
   Historial de cambios
+  v1.10 Saltos de 10 siempre de a 10
+    + En "Saltos de 10" los arcos eran de a 1 si en Ajustes estaba elegido "de a 1"; ahora ese modo salta siempre de a 10.
   v1.9  Botón Menú visible
     + "🏠 Menú" arriba a la izquierda, grande y con texto, como en las otras actividades (antes era un ícono chico
       entre las estrellas y el sol, y se confundía con el 🏠 de la vista del tablero).
@@ -350,7 +352,7 @@ body.cuenta-max #scene,body.cuenta-max #eqCard,body.cuenta-max #tools,body.cuent
 /* ============================================================
    Saltos en la Tabla del 100
    ============================================================ */
-const APP_VERSION='1.9';
+const APP_VERSION='1.10';
 const TAG='[Tabla100 v'+APP_VERSION+']';
 // Registro de ejercicios (MATE.ejercicio → planilla). Campos comunes: v, sesion; el resto lo pone cada modo.
 const SES='s'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);
@@ -614,9 +616,11 @@ function labelMaterial(text,size){
 }
 
 let arcSeq=null, afterArcs=null;
+// En "Saltos de 10" siempre se salta de a 10, aunque en Ajustes esté elegido "de a 1".
+function estiloSaltos(){ return S.mode==='saltos'?'diez':S.jumpStyle; }
 function computeJumps(from,to){
   const sign=Math.sign(to-from), ad=Math.abs(to-from), jumps=[]; let cur=from;
-  if(S.jumpStyle==='diez'){
+  if(estiloSaltos()==='diez'){
     const t=Math.floor(ad/10), u=ad%10;
     for(let k=0;k<t;k++){ jumps.push({a:cur,b:cur+10*sign,size:10}); cur+=10*sign; }
     for(let k=0;k<u;k++){ jumps.push({a:cur,b:cur+sign,size:1}); cur+=sign; }
@@ -1026,7 +1030,7 @@ function refreshEquation(){
   const d=S.target-S.ficha, ad=Math.abs(d), op=d>0?'+':MINUS;
   main.innerHTML='<span class="n-ficha">'+S.ficha+'</span><span class="op">'+op+'</span><span class="n-salto">'+ad+'</span><span class="op">=</span><span class="n-res">'+S.target+'</span>';
   const t=Math.floor(ad/10), u=ad%10;
-  if(S.jumpStyle==='diez'){
+  if(estiloSaltos()==='diez'){
     const parts=[]; if(t) parts.push(t+' '+plural(t,'salto','saltos')+' de 10'); if(u) parts.push(u+' '+plural(u,'salto','saltos')+' de 1');
     sub.textContent=parts.join(' y ');
     dec.innerHTML=(t&&u)?(S.ficha+' '+op+' <span class="n-salto">'+(t*10)+'</span> '+op+' <span class="n-salto">'+u+'</span> = '+S.target):'';
