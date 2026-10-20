@@ -1,6 +1,10 @@
 /* El gato come fracciones (fracciones de 4to) — interfaz.
    ------------------------------------------------------------
    Historial de cambios
+   v1.3.0  (2026-10-20) Escena para jugar
+     + Arrastrar con el mouse o el dedo gira la escena (con inercia); la rueda o dos dedos acercan; doble toque la endereza.
+     + Tocar al chico lo hace saludar, la sandía lleva a Michi a comer, los árboles se sacuden, las flores saltan y tocar el
+       pasto hace caminar a Michi hasta ahí (después vuelve a su lugar).
    v1.2.0  (2026-10-20) Michi a pantalla completa
      + La escena 3D ocupa toda la pantalla, detrás del panel (como la mascota de Luz): una isla de pasto con árboles,
        flores y una sandía. Michi queda a la izquierda (horizontal) o arriba (vertical); tocarlo lo pone contento.
@@ -16,7 +20,7 @@
    ------------------------------------------------------------ */
 (function () {
   'use strict';
-  var VERSION = '1.2.0', ACT = '4to-fracciones-gato';
+  var VERSION = '1.3.0', ACT = '4to-fracciones-gato';
   var FRUI = REF4_FRUI, FR = REF4_FR, G = REF4_GATO, G3D = window.REF4_GATO3D, cf = FRUI.conFracciones;
   var txt = function (f) { return f.d === 1 ? String(f.n) : f.n + '/' + f.d; };
   var TEXTO_PASO = { come: 'darle de comer a Michi', entero: 'escribir cuántos enteros son', queda: 'escribir lo que queda', simple: 'escribir la fracción de otra forma',

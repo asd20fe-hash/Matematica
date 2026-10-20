@@ -2,11 +2,14 @@
    window.REF4_GATO3D = {fondo() → true si pudo, estado(cara), boca() → {x, y} en pantalla, activo(), alTocar(fn)}.
    v1.1: a pantalla completa, detrás de la interfaz (como la mascota de Luz), en una isla de pasto con árboles,
    flores y una sandía. La cámara deja a Michi a la izquierda (horizontal) o arriba (vertical), donde no tapa el panel.
+   v1.2: arrastrar (mouse o dedo) gira la escena, con inercia; la rueda o dos dedos acercan; doble toque la endereza.
+   Tocar: a Michi (salta), al chico (saluda), la sandía (Michi va y come), un árbol (se sacude), una flor (salta) o el pasto
+   (Michi camina hasta ahí; a los 8 s vuelve a su lugar).
    Caras/estados: normal, come (mastica y vuelan migas), feliz (saltan los dos), puaj (escupe y sacude la cabeza),
-   piensa (inclina la cabeza). Versión 1.1.0 (2026-10-20). */
+   piensa (inclina la cabeza). Versión 1.2.0 (2026-10-20). */
 (function (root) {
   'use strict';
-  var T = root.THREE, R = null, cont = null, tocar = null, ray = null, escena, camara, gato = {}, chico = {}, parts = [], estado = 'normal', tEstado = 0, reloj = 0, ult = 0, ok = null;
+  var T = root.THREE, R = null, cont = null, tocar = null, ray = null, mundo = {}, dBase = 6, giro = { yaw: 0, pitch: 0, zoom: 1, vel: 0, volver: false }, saludo = 0, escena, camara, gato = {}, chico = {}, parts = [], estado = 'normal', tEstado = 0, reloj = 0, ult = 0, ok = null;
   var PX = 1 / 16; // un pixel de textura = 1/16 de bloque
 
   /* ---------- texturas de pixeles ---------- */
@@ -83,18 +86,22 @@
     var isla = bloque(6.4, 0.5, 3.4, [costado, costado, pasto, tierra, costado, costado]); isla.position.set(0, -0.25, -0.3); g.add(isla);
     var abajo = bloque(4.6, 0.5, 2.2, [tierra, tierra, tierra, tierra, tierra, tierra]); abajo.position.set(0, -0.75, -0.3); g.add(abajo);
     var tronco = tex(8, 16, '#7a5230', function (px) { for (var x = 1; x < 8; x += 3) px(x, 0, '#5e3d22', 1, 16); }), hojas = tex(16, 16, '#3f8f2f', null, 0.6);
+    mundo = { isla: isla, arboles: [], flores: [] };
     [[-2.5, -1.3, 1.3], [2.6, -1.4, 1.1], [-1.4, -1.7, 0.9]].forEach(function (a) {
-      var t = bloque(0.3, a[2] * 1.2, 0.3, tronco); t.position.set(a[0], a[2] * 0.6, a[1]); g.add(t);
-      var c = bloque(a[2], a[2] * 0.8, a[2], hojas); c.position.set(a[0], a[2] * 1.2 + a[2] * 0.3, a[1]); g.add(c);
-      var c2 = bloque(a[2] * 0.55, a[2] * 0.45, a[2] * 0.55, hojas); c2.position.set(a[0], a[2] * 1.2 + a[2] * 0.85, a[1]); g.add(c2);
+      var ar = new T.Group(); ar.position.set(a[0], 0, a[1]); g.add(ar); mundo.arboles.push(ar);
+      var t = bloque(0.3, a[2] * 1.2, 0.3, tronco); t.position.set(0, a[2] * 0.6, 0); ar.add(t);
+      var c = bloque(a[2], a[2] * 0.8, a[2], hojas); c.position.set(0, a[2] * 1.2 + a[2] * 0.3, 0); ar.add(c);
+      var c2 = bloque(a[2] * 0.55, a[2] * 0.45, a[2] * 0.55, hojas); c2.position.set(0, a[2] * 1.2 + a[2] * 0.85, 0); ar.add(c2);
+      ar.userData.copa = a[2] * 1.5;
     });
     var COL = ['#e5484d', '#f5c84a', '#ffffff', '#b07cff'];
     [[-1.9, 0.6], [-2.8, 0.1], [1.7, 0.9], [2.9, 0.4], [-0.2, 1.0], [1.2, -0.8], [-2.2, -0.6], [2.2, -0.2]].forEach(function (a, i) {
       var tallo = bloque(0.04, 0.18, 0.04, new T.MeshLambertMaterial({ color: 0x3f8f2f })); tallo.position.set(a[0], 0.09, a[1]); g.add(tallo);
       var flor = bloque(0.11, 0.11, 0.11, new T.MeshLambertMaterial({ color: COL[i % COL.length] })); flor.position.set(a[0], 0.21, a[1]); g.add(flor);
+      flor.userData.color = COL[i % COL.length]; mundo.flores.push(flor);
     });
     var melon = tex(16, 16, '#5aa02c', function (px) { for (var x = 0; x < 16; x += 4) px(x, 0, '#3d7a1c', 2, 16); }), melonTapa = tex(16, 16, '#5aa02c', function (px) { px(3, 3, '#3d7a1c', 10, 10); px(5, 5, '#5aa02c', 6, 6); });
-    var sandia = bloque(0.42, 0.42, 0.42, [melon, melon, melonTapa, melon, melon, melon]); sandia.position.set(1.55, 0.21, 0.55); sandia.rotation.y = 0.4; g.add(sandia);
+    var sandia = bloque(0.42, 0.42, 0.42, [melon, melon, melonTapa, melon, melon, melon]); sandia.position.set(1.55, 0.21, 0.55); sandia.rotation.y = 0.4; g.add(sandia); mundo.sandia = sandia;
     var tajada = bloque(0.3, 0.1, 0.2, [tex(8, 4, '#e5484d', function (px) { px(0, 3, '#5aa02c', 8, 1); px(2, 1, '#222222'); px(5, 1, '#222222'); })]); tajada.position.set(1.15, 0.05, 0.85); tajada.rotation.y = -0.3; g.add(tajada);
     return g;
   }
@@ -125,11 +132,8 @@
       escena.add(armarMundo());
       var gg = armarGato(); gg.position.set(0.55, 0, 0.2); gg.rotation.y = -0.75; gg.scale.setScalar(1.2); escena.add(gg);
       var cc = armarChico(); cc.position.set(-0.7, 0, -0.1); cc.rotation.y = 0.35; escena.add(cc);
-      ray = new T.Raycaster();
-      R.domElement.addEventListener('pointerup', function (ev) {
-        var r = R.domElement.getBoundingClientRect(), v = new T.Vector2((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
-        ray.setFromCamera(v, camara); if (ray.intersectObject(gato.g, true).length) { cambiar('feliz'); if (tocar) tocar(); }
-      });
+      gg.userData.casa = gg.position.clone(); gg.userData.rot = gg.rotation.y; gato.rotQuiere = gg.rotation.y;
+      ray = new T.Raycaster(); manejarToques(R.domElement);
       requestAnimationFrame(cuadro); ok = true;
     } catch (e) { ok = false; if (root.console) console.warn('[gato 3D] sin 3D, uso el dibujo:', e.message); }
     return ok;
@@ -141,6 +145,9 @@
     var dt = Math.min(0.05, ult ? (ms - ult) / 1000 : 0.016); ult = ms; reloj += dt; tEstado += dt;
     var w = c.parentNode.clientWidth, h = c.parentNode.clientHeight;
     if (w && h && (c.width !== Math.round(w * R.getPixelRatio()) || c.height !== Math.round(h * R.getPixelRatio()))) encuadrar(w, h);
+    if (giro.volver) { giro.yaw *= 0.86; giro.pitch *= 0.86; giro.zoom += (1 - giro.zoom) * 0.14; if (Math.abs(giro.yaw) + Math.abs(giro.pitch) < 0.002) giro.volver = false; }
+    else if (!arrastrando && giro.vel) { giro.yaw += giro.vel * dt; giro.vel *= Math.pow(0.04, dt); if (Math.abs(giro.vel) < 0.02) giro.vel = 0; }
+    ponerCamara();
     animar(dt);
     R.render(escena, camara);
   }
@@ -151,19 +158,101 @@
   function encuadrar(w, h) {
     R.setSize(w, h, false); camara.aspect = w / h;
     var horiz = w >= 760 && w >= h, zx = horiz ? 0.34 : 0.96, zy = horiz ? 0.66 : 0.26, cx = horiz ? 0.22 : 0.5, cy = horiz ? 0.55 : 0.22;
-    var tg = Math.tan(camara.fov * Math.PI / 360), d = Math.max(3 / (zx * 2 * tg * camara.aspect), 2.3 / (zy * 2 * tg));
-    var dir = new T.Vector3(0.06, 0.2, 1).normalize(), mira = new T.Vector3(0, 0.95, 0);
-    camara.position.copy(mira).addScaledVector(dir, d); camara.lookAt(mira);
-    camara.setViewOffset(w, h, w * (0.5 - cx), h * (0.5 - cy), w, h); camara.updateProjectionMatrix();
+    var tg = Math.tan(camara.fov * Math.PI / 360);
+    dBase = Math.max(3 / (zx * 2 * tg * camara.aspect), 2.3 / (zy * 2 * tg));
+    camara.setViewOffset(w, h, w * (0.5 - cx), h * (0.5 - cy), w, h); camara.updateProjectionMatrix(); ponerCamara();
+  }
+  // La cámara gira alrededor de Michi y el chico (yaw libre, pitch entre casi a ras del pasto y desde arriba).
+  var MIRA = null, YAW0 = Math.atan2(0.06, 1), PITCH0 = Math.asin(0.2 / Math.hypot(0.06, 0.2, 1));
+  function ponerCamara() {
+    if (!MIRA) MIRA = new T.Vector3(0, 0.95, 0);
+    giro.pitch = Math.max(0.02 - PITCH0, Math.min(1.25 - PITCH0, giro.pitch)); giro.zoom = Math.max(0.6, Math.min(1.7, giro.zoom));
+    var y = YAW0 + giro.yaw, p = PITCH0 + giro.pitch, d = dBase * giro.zoom;
+    camara.position.set(MIRA.x + Math.sin(y) * Math.cos(p) * d, MIRA.y + Math.sin(p) * d, MIRA.z + Math.cos(y) * Math.cos(p) * d); camara.lookAt(MIRA);
+  }
+
+  /* ---------- toques: arrastrar gira, dos dedos o la rueda acercan, tocar hace cosas ---------- */
+  var arrastrando = false, dedos = {}, pista = null;
+  function manejarToques(el) {
+    var x0 = 0, y0 = 0, xa = 0, ta = 0, movio = false, pinza = 0, zoom0 = 1;
+    var lista = function () { return Object.keys(dedos).map(function (k) { return dedos[k]; }); };
+    el.addEventListener('pointerdown', function (ev) {
+      try { el.setPointerCapture(ev.pointerId); } catch (e) { /* sin captura */ }
+      dedos[ev.pointerId] = { x: ev.clientX, y: ev.clientY }; giro.volver = false; giro.vel = 0;
+      var l = lista();
+      if (l.length === 1) { arrastrando = true; movio = false; x0 = xa = ev.clientX; y0 = ev.clientY; ta = performance.now(); }
+      else if (l.length === 2) { pinza = Math.hypot(l[0].x - l[1].x, l[0].y - l[1].y); zoom0 = giro.zoom; movio = true; }
+    });
+    el.addEventListener('pointermove', function (ev) {
+      var dd = dedos[ev.pointerId]; if (!dd) return;
+      var dx = ev.clientX - dd.x, dy = ev.clientY - dd.y; dd.x = ev.clientX; dd.y = ev.clientY;
+      var l = lista();
+      if (l.length >= 2) { var dist = Math.hypot(l[0].x - l[1].x, l[0].y - l[1].y); if (pinza) giro.zoom = zoom0 * pinza / dist; return; }
+      if (!movio && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 7) { movio = true; quitarPista(); }
+      if (!movio) return;
+      giro.yaw -= dx * 0.009; giro.pitch += dy * 0.006;
+      var ahora = performance.now(), dt = Math.max(8, ahora - ta); giro.vel = -(ev.clientX - xa) * 0.009 / (dt / 1000); xa = ev.clientX; ta = ahora;
+    });
+    var soltar = function (ev) {
+      if (!dedos[ev.pointerId]) return;
+      delete dedos[ev.pointerId];
+      if (lista().length) return;
+      arrastrando = false;
+      if (performance.now() - ta > 90) giro.vel = 0;        // soltó quieto: sin inercia
+      if (!movio && ev.type === 'pointerup') tocarEn(ev.clientX, ev.clientY);
+    };
+    el.addEventListener('pointerup', soltar); el.addEventListener('pointercancel', soltar);
+    el.addEventListener('wheel', function (ev) { ev.preventDefault(); giro.zoom *= 1 + Math.max(-0.3, Math.min(0.3, ev.deltaY * 0.0012)); }, { passive: false });
+    el.addEventListener('dblclick', function () { giro.volver = true; giro.vel = 0; });
+  }
+  function quitarPista() { if (pista) { pista.classList.add('fuera'); var p = pista; pista = null; setTimeout(function () { p.remove(); }, 600); } }
+  function tocarEn(x, y) {
+    var r = R.domElement.getBoundingClientRect(), v = new T.Vector2((x - r.left) / r.width * 2 - 1, -(y - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(v, camara);
+    var hit = function (o) { return ray.intersectObject(o, true)[0]; };
+    if (hit(gato.g)) { cambiar('feliz'); if (tocar) tocar(); return; }
+    if (hit(chico.g)) { saludo = 1.6; chispas(5, [0xffd34d, 0xffffff], chico.cab.getWorldPosition(new T.Vector3()).add(new T.Vector3(0, 0.6, 0)), { x: 0, y: 0.9, z: 0, r: 0.6, g: 0.3 }); return; }
+    if (hit(mundo.sandia)) { var sp = mundo.sandia.position; caminar(sp.x - 0.15, sp.z + 0.55, function () { cambiar('come'); chispas(10, [0xe5484d, 0x5aa02c, 0x222222], bocaMundo(), { x: 0, y: 0.6, z: 0, r: 1 }); }); return; }
+    for (var i = 0; i < mundo.arboles.length; i++) {
+      var ar = mundo.arboles[i];
+      if (hit(ar)) { ar.userData.sacude = 1; chispas(12, [0x3f8f2f, 0x5fae3c, 0x2f6f22], ar.position.clone().setY(ar.userData.copa), { x: 0, y: 0.3, z: 0.3, r: 1.4, g: -1.2 }); return; }
+    }
+    for (var j = 0; j < mundo.flores.length; j++) {
+      var f = mundo.flores[j];
+      if (hit(f)) { f.userData.salta = 1; chispas(6, [new T.Color(f.userData.color).getHex(), 0xffffff], f.position.clone(), { x: 0, y: 1, z: 0, r: 0.7, g: -1.5 }); return; }
+    }
+    var p = hit(mundo.isla); if (p) caminar(p.point.x, p.point.z);
+  }
+  // Michi camina hasta (x, z) (sin salir de la parte que se ve) y al llegar hace fin(); a los 8 s quieto vuelve a su lugar.
+  function caminar(x, z, fin) {
+    gato.destino = new T.Vector3(Math.max(-1.7, Math.min(2, x)), 0, Math.max(-1.2, Math.min(1.1, z))); gato.alLlegar = fin || null; gato.quieto = 0;
+  }
+  function moverGato(dt) {
+    var G = gato, g = G.g;
+    if (!G.destino) {
+      G.quieto = (G.quieto || 0) + dt;
+      if (G.quieto > 8 && g.position.distanceTo(g.userData.casa) > 0.1) caminar(g.userData.casa.x, g.userData.casa.z, function () { G.rotQuiere = g.userData.rot; });
+    } else {
+      var dx = G.destino.x - g.position.x, dz = G.destino.z - g.position.z, dist = Math.hypot(dx, dz);
+      if (dist < 0.04) { G.destino = null; G.quieto = 0; var f = G.alLlegar; G.alLlegar = null; if (f) f(); }
+      else {
+        var paso = Math.min(dist, 1.1 * dt); g.position.x += dx / dist * paso; g.position.z += dz / dist * paso; G.rotQuiere = Math.atan2(dx, dz);
+        G.patas.forEach(function (p, i) { p.rotation.x = Math.sin(reloj * 14 + (i % 3 ? Math.PI : 0)) * 0.6; });
+      }
+    }
+    var dr = G.rotQuiere - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * Math.min(1, dt * 8);
+    mundo.arboles.forEach(function (ar) { var k = ar.userData.sacude || 0; if (k > 0) { ar.userData.sacude = Math.max(0, k - dt * 1.4); ar.rotation.z = Math.sin(k * 30) * 0.08 * k; ar.rotation.x = Math.cos(k * 26) * 0.05 * k; } });
+    mundo.flores.forEach(function (f) { var k = f.userData.salta || 0; if (k > 0) { f.userData.salta = Math.max(0, k - dt * 2); f.position.y = 0.21 + Math.sin((1 - k) * Math.PI) * 0.25; f.rotation.y += dt * 12 * k; } });
   }
 
   function animar(dt) {
     var t = reloj, e = tEstado, G = gato, C = chico, s = Math.sin;
     // reposo
     G.g.position.y = 0; G.cab.rotation.set(s(t * 1.6) * 0.04, 0, 0); G.cola.rotation.set(0, 0, s(t * 2.4) * 0.35);
-    G.patas.forEach(function (p) { p.rotation.x = 0; });
+    if (!G.destino) G.patas.forEach(function (p) { p.rotation.x = 0; });
     C.g.position.y = 0; C.cab.rotation.set(0, s(t * 0.7) * 0.12, 0);
     C.bi.rotation.set(s(t * 1.8) * 0.06, 0, 0); C.bd.rotation.set(-s(t * 1.8) * 0.06, 0, 0); C.pi.rotation.x = 0; C.pd.rotation.x = 0;
+    if (saludo > 0) { saludo -= dt; C.bd.rotation.z = 2.7 + s(t * 14) * 0.35; C.g.position.y = Math.max(0, s((1.6 - saludo) * 6)) * 0.08; }
     if (estado === 'come') {
       G.cab.rotation.x = 0.25 + s(e * 18) * 0.22;
       if (e > 1.4) cambiar('normal');
@@ -180,6 +269,7 @@
       G.cab.rotation.z = 0.32; C.bd.rotation.x = -2.4; C.bd.rotation.z = 0.35; C.cab.rotation.z = -0.12;
       if (e > 1.5) cambiar('normal');
     }
+    moverGato(dt);
     for (var i = parts.length - 1; i >= 0; i--) {
       var p = parts[i]; p.vida -= dt; p.v.y += p.g * dt; p.m.position.addScaledVector(p.v, dt); p.m.rotation.x += dt * 5; p.m.rotation.y += dt * 4;
       if (p.vida <= 0) { escena.remove(p.m); p.m.material.dispose(); parts.splice(i, 1); }
@@ -197,7 +287,11 @@
     // Pone la escena a pantalla completa detrás de la interfaz (sin WebGL o three.js devuelve false y la interfaz usa el emoji).
     fondo: function () {
       if (!crear()) return false;
-      if (!cont) { cont = document.createElement('div'); cont.id = 'gt-mundo'; cont.setAttribute('aria-hidden', 'true'); document.body.insertBefore(cont, document.body.firstChild); cont.appendChild(R.domElement); }
+      if (!cont) {
+        cont = document.createElement('div'); cont.id = 'gt-mundo'; cont.setAttribute('aria-hidden', 'true'); document.body.insertBefore(cont, document.body.firstChild); cont.appendChild(R.domElement);
+        pista = document.createElement('div'); pista.className = 'gt-pista'; pista.textContent = '👆 Arrastrá para girar · tocá a Michi, el árbol o la sandía'; cont.appendChild(pista);
+        setTimeout(quitarPista, 14000);
+      }
       return true;
     },
     alTocar: function (fn) { tocar = fn; },
@@ -208,7 +302,8 @@
       var p = bocaMundo().project(camara), r = R.domElement.getBoundingClientRect();
       return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height };
     },
-    activo: function () { return !!ok; }
+    activo: function () { return !!ok; },
+    giro: giro, tocarEn: function (x, y) { tocarEn(x, y); }, caminar: function (x, z) { caminar(x, z); }, gato: function () { return gato.g; }
   };
   root.REF4_GATO3D = API;
 })(window);
