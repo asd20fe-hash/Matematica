@@ -57,6 +57,13 @@
        a la boca). La profe dice qué es ("Some coffee!") y la mascota reacciona: con el café salta y se llena de energía,
        con el cupcake baila y con el jugo aplaude. Si tiene la panza llena dice "I'm full!" (el café igual lo toma).
        No se registra: es parte del cuidado.
+   v1.8.0  (2026-10-20) Modo libre
+     + Botón 🕊️ Libre en la casa (queda guardado): la mascota no pide nada ni habla, y al llegar no hay preguntas.
+     + 🛒 Súper libre: Luz elige lo que quiera de la góndola (🔄 cambia las cosas), lo lleva al carrito y paga con 💰.
+     + 🧺 Despensa libre: le da lo que quiera de lo comprado (tocar o arrastrar a la boca).
+     + ☕ Café y 🍽️ restaurante libres: le da lo que quiera del menú y al final paga la cuenta.
+     + 🛁 Baño libre (frotar con el dedo hasta que queda limpita) y 🛏️ dormitorio directo a la cama.
+     + En la lección, los juegos y la escuela todo sigue como siempre. Lo libre no se registra.
    ------------------------------------------------------------
    El entorno J que reciben los juegos (ING_JUEGOS) se arma en entorno(): M, O, pip, hoot, az, nivel, nombre, debug,
    posiciones(n), responder(w) → {ok, mostrar, ignorar}, opciones(lista), aviso(icono, texto), pintado(color), alimentar(n),
@@ -65,7 +72,7 @@
    Un paso puede traer su propio jugar, orden, icono y errorFn(esperada, elegida) (pizarrón y entradas del cine, sin juego registrado). */
 (function () {
   'use strict';
-  var VERSION = '1.7.0', ACT = '1ro-ingles-mascota';
+  var VERSION = '1.8.0', ACT = '1ro-ingles-mascota';
   var ROPA = ING_ROPA, R3 = ING_ROPA3D, AL = ING_ALBUM, SA = ING_SALIDAS, V = ING_VOCAB, JG = ING_JUEGOS, LC = ING_LECC, PET = ING_PET, TD = ING_TIENDA, VZ = ING_VOZ, O = ING_OBJ3D, RP = REPASO1, UI = REF4_UI;
   var esc = UI1.esc, TX = UI1.txt, F = UI1.frase;
   var ctx = UI1.base({ act: ACT, version: VERSION, titulo: 'Mi mascota', alCambiarCaso: function () { pintarHUD(); if (S.banner) banner(S.banner); } });
@@ -112,8 +119,14 @@
 
   /* ---------- voz ---------- */
   function profe(texto, despues) { VZ.decir(texto, { quien: 'profe', alEmpezar: function () { hoot.hablar(true); }, alTerminar: function () { hoot.hablar(false); }, despues: despues }); }
-  function pipDice(texto, despues) { VZ.decir(texto, { quien: 'pip', alEmpezar: function () { pip.hablar(true); }, alTerminar: function () { pip.hablar(false); }, despues: despues }); }
+  // Modo libre (pet.sinPedidos): la mascota no habla ni pide; en la lección, los juegos y la escuela sigue como siempre.
+  var ENSENA = { leccion: 1, libre: 1, escuela: 1 };
+  function libre() { return !!pet.sinPedidos && !ENSENA[S.modo]; }
+  function pipDice(texto, despues) {
+    if (libre()) { if (despues) M.esperar(200, despues); return; }
+    VZ.decir(texto, { quien: 'pip', alEmpezar: function () { pip.hablar(true); }, alTerminar: function () { pip.hablar(false); }, despues: despues }); }
   function charla(lista, despues) {
+    if (libre()) { lista = lista.filter(function (x) { return x.quien !== 'pip'; }); if (!lista.length) { if (despues) M.esperar(200, despues); return; } }
     VZ.secuencia(lista.map(function (x) {
       var p = x.quien === 'pip' ? pip : hoot;
       return { t: x.t, quien: x.quien || 'profe', lento: x.lento, alEmpezar: function () { p.hablar(true); }, alTerminar: function () { p.hablar(false); } };
@@ -144,7 +157,9 @@
       var c = pet[n.id] < 40 ? 'var(--bad)' : (n.id === 'panza' ? 'var(--warn)' : 'var(--accent2)');
       return '<div class="ing-burbuja ing-card" title="' + n.id + '"><div class="ing-anillo" style="--v:' + Math.round(pet[n.id]) + ';--c:' + c + '"><span>' + n.icono + '</span></div></div>';
     }).join('');
-    $('#estado').innerHTML = pet.nacido ? h + '<div class="ing-burbuja ing-card" id="monedas"><span class="ing-moneda">⭐</span>' + pet.monedas + '</div>' : '';
+    $('#estado').innerHTML = pet.nacido ? h + '<div class="ing-burbuja ing-card" id="monedas"><span class="ing-moneda">⭐</span>' + pet.monedas + '</div>' +
+      (S.modo === 'casa' ? '<button class="ing-burbuja ing-card ing-libre' + (pet.sinPedidos ? ' on' : '') + '" id="b-libre" aria-pressed="' + !!pet.sinPedidos + '" title="Modo libre: la mascota no pide nada">🕊️<span>' + esc(F('Libre')) + '</span></button>' : '') : '';
+    if ($('#b-libre')) $('#b-libre').onclick = alternarLibre;
     var ab = $('#abajo');
     if (S.modo === 'casa') {
       ab.innerHTML = '<button class="ing-btn main' + (pet.lecciones ? '' : ' late') + '" id="b-leccion"><span class="ic">🦉</span>' + esc(F('¡A aprender!')) + '</button>' +
@@ -152,11 +167,20 @@
         LUGARES.map(function (l) { return '<button class="ing-btn ing-lugar' + (S.sugerido === l[0] ? ' late' : '') + '" data-l="' + l[0] + '" title="' + l[2] + '">' + l[1] + '</button>'; }).join('') +
         (TD.cuantas(pet) ? '<button class="ing-btn ing-lugar' + (S.recienCompro ? ' main late' : '') + '" id="b-comida" title="Su comida">🧺<b>' + TD.cuantas(pet) + '</b></button>' : '');
       $('#b-leccion').onclick = leccion; $('#b-juegos').onclick = menuJuegos; $('#b-album').onclick = function () { album(); }; if ($('#b-comida')) $('#b-comida').onclick = despensa;
-      ab.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { ({ super: supermercado, salir: menuSalidas, ropa: cambiador, bano: bano, dormir: dormitorio, patio: patio, merienda: merienda })[b.dataset.l](); }; });
+      ab.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { ({ super: pet.sinPedidos ? superLibre : supermercado, salir: menuSalidas, ropa: cambiador, bano: pet.sinPedidos ? banoLibre : bano, dormir: dormitorio, patio: patio, merienda: merienda })[b.dataset.l](); }; });
     } else if (S.modo === 'leccion' || S.modo === 'libre' || S.modo === 'escuela') {
       ab.innerHTML = '<button class="ing-btn" id="b-salir" title="Volver a la casa">✖</button><div class="ing-prog ing-card">' + S.res.map(function (r, i) {
         return '<i class="' + (r || (i === S.k ? 'actual' : '')) + '"></i>'; }).join('') + '</div><span style="width:64px"></span>';
       $('#b-salir').onclick = function () { VZ.callar(); casa(false); };
+    } else if (S.carro && S.fase === 'elige') {
+      var gasto = S.modo === 'super' ? TD.total(S.carro) : S.cuenta, sup = S.modo === 'super';
+      ab.innerHTML = (sup || !gasto ? '<button class="ing-btn" id="b-salir" title="Volver a la casa">🏠</button>' : '') + '<div class="ing-lista ing-card">' +
+        (S.carro.length ? S.carro.map(function (it) { return '<span class="ok">' + dib(it.w) + (it.n > 1 ? '<b>×' + it.n + '</b>' : '') + '</span>'; }).join('') : '<span>' + (sup ? '🛒' : '🍽️') + '</span>') + '</div>' +
+        (sup ? '<button class="ing-btn" id="b-otras" title="Otras cosas">🔄</button>' : '') +
+        (gasto ? '<button class="ing-btn main" id="b-pagar"><span class="ic">💰</span>' + gasto + ' ⭐</button>' : (sup ? '' : '<span style="width:64px"></span>'));
+      if ($('#b-salir')) $('#b-salir').onclick = function () { VZ.callar(); casa(false); };
+      if ($('#b-otras')) $('#b-otras').onclick = function () { VZ.sfx('woosh'); ponerGondola(S.token); };
+      if ($('#b-pagar')) $('#b-pagar').onclick = pagarLibre;
     } else if (S.lista && (S.modo === 'super' || GASTA[S.modo])) {
       ab.innerHTML = '<button class="ing-btn" id="b-salir" title="Volver a la casa">✖</button><div class="ing-lista ing-card">' + S.lista.map(function (it, i) {
         var hecho = S.compra[i] >= it.n, cual = hecho || i < S.k ? dib(it.w) : '❔';
@@ -211,7 +235,7 @@
     PET.sumar(pet, 'alegria', 1); pintarHUD(); guardar();
   });
   M.alMover(function (info) {
-    if (S.modo === 'bano' && info.abajo) { var gb = M.golpe(info.e); if (gb && pip.esMio(gb) && Math.random() < 0.5) espuma(gb.hit.point, 2); return; }
+    if (S.modo === 'bano' && info.abajo) { var gb = M.golpe(info.e); if (gb && pip.esMio(gb)) { if (Math.random() < 0.5) espuma(gb.hit.point, 2); if (S.fase === 'frota') frotar(); } return; }
     if (S.modo !== 'casa' || !info.abajo) return;
     var g = M.golpe(info.e); if (!g || !pip.esMio(g)) return;
     cosquillas += 1;
@@ -300,8 +324,9 @@
   /* ---------- casa ---------- */
   function casa(saludo) {
     S.modo = 'casa'; S.token++; S.oirActual = null; S.tocarPip = null; S.alOir = null; limpiarEscena(); banner(null); chip(null); aviso(); UI.fuegos.parar();
-    salirLugares(); vestirGuardado(); pintarHUD(); S.recienCompro = false;
+    salirLugares(); vestirGuardado(); S.carro = null; S.sugerido = null; pintarHUD(); S.recienCompro = false;
     if (!saludo) return;
+    if (pet.sinPedidos) { M.esperar(600, function () { pip.feliz(); }); return; }   // modo libre: sin preguntas ni avisos
     var an = PET.animo(pet), tk = S.token;
     S.sugerido = an === 'sucio' ? 'bano' : (an === 'sueno' ? 'dormir' : (an === 'hambre' && !TD.cuantas(pet) ? 'super' : null)); pintarHUD();
     function avisar() {
@@ -501,7 +526,7 @@
   function supermercado() {
     VZ.callar(); limpiarEscena(); chip(null); aviso(); banner(null); UI.fuegos.parar(); velo('');
     var tk = ++S.token, lista = TD.lista({ nivel: nivel(), az: ctx.az, rep: rep, monedas: pet.monedas });
-    S.modo = 'super'; S.oirActual = null; S.tocarPip = null; S.paso = null; S.opciones = null; S.aura = null;
+    S.modo = 'super'; S.oirActual = null; S.tocarPip = null; S.paso = null; S.opciones = null; S.aura = null; S.carro = null;
     S.lista = lista; S.compra = lista.map(function () { return 0; }); S.k = -1; S.res = lista.map(function () { return null; });
     SUP.mostrar(true); hoot.ponerEn(SUP.lugarProfe()); VZ.sfx('woosh'); pip.ponerEn(0, -0.2); var lp = SUP.lugarPip(); pip.escala(PET.etapa(pet).escala * SUP.escalaPip()); pip.irA(lp[0], lp[1]);
     pintarHUD();
@@ -613,6 +638,7 @@
     VZ.callar(); velo(''); chip(null); aviso(); banner(null); UI.fuegos.parar();
     salirLugares();
     S.modo = 'despensa'; S.res = []; S.k = -1; S.dadas = 0; S.tocarPip = null;
+    if (pet.sinPedidos) return despensaLibre(++S.token);
     darComida();
   }
   function darComida() {
@@ -647,7 +673,7 @@
   function merienda() {
     var tk = entrar('merienda', null);
     banner({ icono: '🧁', en: 'Snack time!', es: 'Dale algo rico a ' + nombre() });
-    profe('Snack time! What do you want to give ' + nombreVoz() + '?');
+    if (!pet.sinPedidos) profe('Snack time! What do you want to give ' + nombreVoz() + '?');
     ponerMerienda(tk);
   }
   function ponerMerienda(tk) {
@@ -691,6 +717,141 @@
     }
   }
 
+  /* ---------- modo libre: la mascota no pide; Luz elige qué comprar y qué darle (no se registra) ---------- */
+  function alternarLibre() {
+    pet.sinPedidos = !pet.sinPedidos; guardar(); VZ.callar(); VZ.sfx('pop');
+    if (S.modo === 'casa') casa(false); else { aviso(); S.sugerido = null; pintarHUD(); }   // corta "How is Mimi?" o lo que estuviera pidiendo
+    chip(pet.sinPedidos ? '🕊️ ' + esc(F('Libre: ' + nombre() + ' no pide nada')) : '🦉 ' + esc(F(nombre() + ' vuelve a pedir')), false, 2600);
+    if (pet.sinPedidos) pip.feliz();
+  }
+  // Fichas para darle a la mascota (tocar o arrastrar a la boca). items: [{w, etq}]. alDar(it) → false (no la quiere)
+  // o una función que se llama cuando terminó de comer; después se arma todo de nuevo con rearmar().
+  function mesaLibre(items, tk, alDar, rearmar) {
+    if (!vivo(tk)) return;
+    var pos = posiciones(items.length), listo = false;
+    if (M.vertical()) pos.forEach(function (p) { p.x *= 0.62; });
+    var fichas = items.map(function (it, i) {
+      var f = O.ficha(M, it.w, 0.75); f.position.copy(pos[i]); f.scale.setScalar(0.01); f.userData.casa = pos[i].clone(); f.userData.it = it; f.userData.w = it.w; M.scene.add(f);
+      if (it.etq) { var e = O.etiqueta(M, it.etq, { fondo: '#fff6cf', alto: 0.24 }); e.position.set(0.36, 0.16, 0.45); f.add(e); }
+      M.esperar(i * 80, function () { VZ.sfx('pop'); M.tween(420, function (k) { f.scale.setScalar(Math.max(0.01, k)); }, null, 'rebote'); });
+      M.arrastrable(f, {
+        tap: function () { dar(f); },
+        inicio: function () { if (!listo) { f.scale.setScalar(1.15); VZ.sfx('tick'); } },
+        mover: function (p) { if (listo) return; f.position.set(p.x, Math.max(0, p.y - 0.5), f.userData.casa.z); pip.mirarA(f.position); },
+        soltar: function () {
+          if (listo) return; f.scale.setScalar(1);
+          var a = M.aPantalla(f.position.clone().setY(f.position.y + 0.5)), b = M.aPantalla(pip.posBoca()), lado = Math.min(innerWidth, innerHeight);
+          if (Math.hypot(a.x - b.x, a.y - b.y) < lado * 0.2) dar(f); else volver(f);
+        }
+      });
+      return f;
+    });
+    S.opciones = fichas.map(function (f) { return { w: f.userData.w, elegir: function () { dar(f); } }; });
+    function volver(f) { var d = f.position.clone(); M.tween(350, function (k) { f.position.lerpVectors(d, f.userData.casa, k); }, null, 'sale'); }
+    function dar(f) {
+      if (listo || !vivo(tk)) return;
+      var w = f.userData.w, hecho = alDar(f.userData.it);
+      if (!hecho) { volver(f); O.temblar(M, f); pip.no(); VZ.sfx('mal'); return; }
+      listo = true; S.opciones = null;
+      fichas.forEach(function (x) { if (x !== f) M.tween(300, function (k) { x.scale.setScalar(Math.max(0.01, 1 - k)); }, function () { M.limpiar([x]); }); });
+      var comida = f.userData.sprite; M.scene.attach(comida); M.quitarToque(f);
+      M.tween(300, function (k) { f.scale.setScalar(Math.max(0.01, 1 - k)); }, function () { M.limpiar([f]); });
+      profe(mayus(frase(w)) + '!'); chip(dib(w) + ' ' + esc(TX(w.en)) + ' = ' + esc(TX(w.es)), false, 3000);
+      pip.comer(comida, function () { if (!vivo(tk)) return; hecho(); pip.feliz(function () { if (vivo(tk)) M.esperar(250, rearmar); }); });
+    }
+  }
+  var lleno = function () { if (pet.panza < 95) return false; chip('😋 ' + esc(F(nombre() + ' tiene la panza llena')), true, 2200); return true; };
+  function agregar(lista, w) { var x = lista.filter(function (y) { return y.w === w; })[0]; if (x) x.n++; else lista.push({ w: w, n: 1 }); }
+  var alcanza = function (gasto, p) { return gasto + p <= Math.min(pet.monedas, TD.TOPE); };
+  function noAlcanza() { chip('⭐ ' + esc(F(pet.monedas ? 'No te alcanzan las ⭐' : 'No tenés ⭐: jugá con Miss Hoot para ganar')), true, 2600); }
+
+  // Súper libre: la góndola con cosas al azar (🔄 cambia), se toca para llevar al carrito y 💰 para pagar en la caja.
+  function superLibre() {
+    VZ.callar(); limpiarEscena(); chip(null); aviso(); banner(null); UI.fuegos.parar(); velo(''); salirLugares();
+    var tk = ++S.token;
+    S.modo = 'super'; S.oirActual = null; S.tocarPip = null; S.paso = null; S.opciones = null; S.aura = null; S.lista = null; S.carro = []; S.fase = 'elige'; S.gondola = [];
+    SUP.mostrar(true); hoot.ponerEn(SUP.lugarProfe()); VZ.sfx('woosh'); pip.ponerEn(0, -0.2); var lp = SUP.lugarPip(); pip.escala(PET.etapa(pet).escala * SUP.escalaPip()); pip.irA(lp[0], lp[1]);
+    banner({ icono: '🛒', en: 'Shopping!', es: 'Tocá lo que quieras y después 💰 para pagar' });
+    ponerGondola(tk); pintarHUD();
+  }
+  function ponerGondola(tk) {
+    if (!vivo(tk) || S.fase !== 'elige') return;
+    M.limpiar(S.gondola); S.gondola = [];
+    var huecos = SUP.huecos(), ws = ctx.az.mezclar(V.palabras({ temas: [TD.TEMA] })).slice(0, huecos.length);
+    S.estante = ws.map(function (w, i) {
+      var f = O.ficha(M, w, 0.7), h = huecos[i]; f.position.copy(h); f.scale.setScalar(0.01); M.scene.add(f);
+      var etq = O.etiqueta(M, TD.precio(w) + '⭐', { fondo: '#fff6cf', alto: 0.17 }); etq.position.set(h.x + 0.36, h.y + 0.14, h.z + 0.42); M.scene.add(etq);
+      S.gondola.push(f, etq);
+      M.esperar(100 + i * 60, function () { VZ.sfx('pop'); M.tween(400, function (k) { f.scale.setScalar(Math.max(0.01, k)); }, null, 'rebote'); });
+      M.tocable(f, function () { llevar(f, tk); });
+      return f;
+    });
+    S.opciones = S.estante.map(function (f) { return { w: f.userData.w, elegir: function () { llevar(f, tk); } }; });
+  }
+  function llevar(f, tk) {
+    if (!vivo(tk) || S.fase !== 'elige') return;
+    var w = f.userData.w, T = M.T;
+    if (!alcanza(TD.total(S.carro), TD.precio(w))) { O.temblar(M, f); VZ.sfx('mal'); return noAlcanza(); }
+    agregar(S.carro, w);
+    var s = new T.Sprite(new T.SpriteMaterial({ map: M.texEmoji(w.img), transparent: true })); s.scale.setScalar(0.45);
+    var desde = f.userData.sprite.getWorldPosition(new T.Vector3()), hasta = SUP.carrito.proximo(); s.position.copy(desde); M.scene.add(s);
+    VZ.sfx('woosh'); O.rebotar(M, f, 0.25); pip.mirarA(hasta);
+    M.tween(550, function (k) { s.position.lerpVectors(desde, hasta, k); s.position.y += Math.sin(k * Math.PI) * 0.9; }, function () { SUP.carrito.meter(s); VZ.sfx('pop'); M.particulas('brillo', hasta, 2); }, 'entraSale');
+    profe(mayus(frase(w)) + '!'); chip(dib(w) + ' ' + esc(TX(w.en)) + ' = ' + esc(TX(w.es)), false, 2200);
+    pintarHUD();
+  }
+  function pagarLibre() {
+    var tk = S.token; VZ.callar();
+    if (S.modo === 'super') {
+      S.lista = S.carro; S.compra = S.carro.map(function (x) { return x.n; }); S.res = S.carro.map(function () { return 'ok'; }); S.fase = 'pagar';
+      S.carro = null; caja(tk); return;
+    }
+    var total = S.cuenta, modo = S.modo, icono = modo === 'cafe' ? '☕' : '🍽️';
+    S.fase = 'pagar'; limpiarEscena(); S.lista = S.carro; S.compra = S.carro.map(function (x) { return x.n; }); S.res = []; S.carro = null;
+    cobrar(total, tk, function () { contarSalida(modo); ctx.log('pagó', modo, '-' + total + '⭐'); chauSalida(tk, icono, [{ t: 'Thank you! Come back soon!' }]); }, SA.cuenta(total));
+  }
+  // Despensa libre: todo lo comprado a la vista; le da lo que quiera.
+  function despensaLibre(tk) {
+    if (!vivo(tk)) return;
+    limpiarEscena(); var d = TD.despensa(pet); pintarHUD();
+    if (!d.length) { banner({ icono: '🧺', en: 'No food!', es: 'No hay comida: ¡vamos al súper!' }); return; }
+    banner({ icono: '🧺', en: 'Yummy!', es: 'Dale lo que quieras a ' + nombre() });
+    mesaLibre(ctx.az.mezclar(d).slice(0, 5).map(function (x) { return { w: x.w, etq: '×' + x.n }; }), tk, function (it) {
+      if (lleno()) return false;
+      return function () { TD.sacar(pet, it.w.en); PET.sumar(pet, 'panza', 15); PET.sumar(pet, 'alegria', 2); guardar(); pintarHUD(); };
+    }, function () { despensaLibre(tk); });
+  }
+  // Café y restaurante libres: el menú en la mesa, le da lo que quiera y al final paga la cuenta.
+  function comerAfuera(modo) {
+    var lugar = modo === 'cafe' ? SAL.cafe : SAL.resto, tk = entrar(modo, lugar);
+    profeEn(lugar.lugarProfe); S.cuenta = 0; S.carro = []; S.fase = 'elige';
+    S.menu = ctx.az.mezclar(V.palabras({ temas: [modo === 'cafe' ? 'cafe' : 'platos'] })).slice(0, 4);
+    banner({ icono: modo === 'cafe' ? '☕' : '🍽️', en: modo === 'cafe' ? 'Welcome to the café!' : 'Welcome to the restaurant!', es: 'Dale lo que quieras a ' + nombre() + ' y al final 💰 pagá' });
+    pintarHUD(); servir(tk);
+  }
+  function servir(tk) {
+    if (!vivo(tk) || S.fase !== 'elige') return;
+    limpiarEscena();
+    mesaLibre(S.menu.map(function (w) { return { w: w, etq: TD.precio(w) + '⭐' }; }), tk, function (it) {
+      var p = TD.precio(it.w);
+      if (!alcanza(S.cuenta, p)) { noAlcanza(); return false; }
+      if (lleno()) return false;
+      S.cuenta += p; agregar(S.carro, it.w); pintarHUD();
+      return function () { PET.sumar(pet, 'panza', 8); PET.sumar(pet, 'alegria', 3); guardar(); pintarHUD(); };
+    }, function () { servir(tk); });
+  }
+  // Baño libre: sin órdenes; se frota a la mascota con el dedo y se va limpiando.
+  function banoLibre() {
+    entrar('bano', LG.bano); R3.vestir(M, pip, {}); acercar(true); S.fase = 'frota'; S.frotes = 0;
+    banner({ icono: '🛁', en: 'Bath time!', es: 'Frotá a ' + nombre() + ' con el dedo' });
+  }
+  function frotar() {
+    if (++S.frotes % 8) return;
+    var antes = pet.limpieza; PET.sumar(pet, 'limpieza', 5); pintarHUD();
+    if (antes < 100 && pet.limpieza >= 100) { PET.sumar(pet, 'alegria', 4); guardar(); VZ.sfx('brillo'); M.particulas('brillo', pip.cabeza.getWorldPosition(new M.T.Vector3()), 6); banner({ icono: '✨', en: 'Squeaky clean!', es: nombre() + ' quedó limpita' }); pip.reir(); }
+    else if (S.frotes % 40 === 0) guardar();
+  }
+
   /* ---------- lugares de la casa: baño, dormitorio y patio ---------- */
   // Deja todo como en la casa: saca el súper y los lugares, la mascota a su lugar y la luz prendida.
   function salirLugares() {
@@ -709,7 +870,7 @@
   function entrar(modo, lugar) {
     VZ.callar(); velo(''); limpiarEscena(); chip(null); aviso(); banner(null); UI.fuegos.parar();
     salirLugares(); if (lugar) lugar.mostrar(true); VZ.sfx('woosh');
-    S.modo = modo; S.fase = null; S.paso = null; S.opciones = null; S.oirActual = null; S.tocarPip = null; S.alOir = null; S.res = []; S.k = -1; S.lista = null;
+    S.modo = modo; S.fase = null; S.paso = null; S.opciones = null; S.oirActual = null; S.tocarPip = null; S.alOir = null; S.res = []; S.k = -1; S.lista = null; S.carro = null;
     var tk = ++S.token; pintarHUD(); return tk;
   }
   // Una palabra del tema (con repaso), distinta de la anterior.
@@ -774,6 +935,7 @@
   // Dormitorio: ordenar juguetes (tema cosas), a la cama, apagar la luz y dormir hasta "Good morning!".
   function dormitorio() {
     var tk = entrar('dormir', LG.dormitorio); S.ordenados = 0; S.ult = null;
+    if (pet.sinPedidos) return aCama(tk);
     banner({ icono: '🧸', en: 'Tidy up!', es: 'A ordenar los juguetes' });
     charla([{ t: 'Tidy up!' }, { t: 'Where are my toys?', quien: 'pip' }], function () { if (vivo(tk)) ordenar(); });
   }
@@ -844,14 +1006,14 @@
   /* ---------- salidas: café, restaurante, escuela y cine ---------- */
   var GASTA = { super: 1, cafe: 1, resto: 1, cine: 1 };          // ahí se paga: los aciertos no dan monedas
   function menuSalidas() {
-    velo('<h2>🚌 ' + esc(F('¿Adónde vamos?')) + '</h2><div class="ing-nombres juegos">' + SA.LUGARES.map(function (l) {
+    velo('<h2>🚌 ' + esc(F('¿Adónde vamos?')) + '</h2><div class="ing-nombres juegos">' + SA.LUGARES.filter(function (l) { return !pet.sinPedidos || l.id === 'cafe' || l.id === 'resto'; }).map(function (l) {
       return '<button class="ing-btn" data-s="' + l.id + '"><span class="ic">' + l.icono + '</span>' + esc(l.en) + '</button>'; }).join('') +
       '</div><p>' + esc(F('En el café, el restaurante y el cine se paga con ⭐')) + '</p><div class="l1-fila"><button class="ing-btn" id="v-no">✖ ' + esc(F('Cerrar')) + '</button></div>', 'ancho');
     $('#panel').querySelectorAll('[data-s]').forEach(function (b) { b.onclick = function () { velo(''); salida(b.dataset.s, true); }; });
     $('#v-no').onclick = function () { velo(''); };
   }
   function salida(id, conViaje) {
-    var fn = { cafe: cafe, resto: restaurante, escuela: escuela, cine: cine }[id]; if (!fn) return;
+    var fn = pet.sinPedidos ? { cafe: function () { comerAfuera('cafe'); }, resto: function () { comerAfuera('resto'); } }[id] : { cafe: cafe, resto: restaurante, escuela: escuela, cine: cine }[id]; if (!fn) return;
     if (!conViaje) return fn();
     // el colectivo cruza la pantalla mientras cambia el lugar
     var d = document.createElement('div'); d.className = 'ing-viaje'; d.innerHTML = '<span>🚌</span>'; document.body.appendChild(d);
@@ -1206,6 +1368,8 @@
       album: function (t) { album(t); }, figurita: function (i) { var b = $('#panel').querySelector('[data-i="' + i + '"]'); if (b) b.click(); return S.album && S.album.cartas[i] && S.album.cartas[i].w.en; },
       ropa: function () { cambiador(); }, salida: function (id) { salida(id); }, SAL: SAL, hoot: hoot, tocarRopa: function (i) { var x = (S.itemsRopa || [])[i]; if (x) x.tocar(); return x && x.it; }, verRopa: function (v) { verRopa(v); },
       super: function () { supermercado(); }, despensa: function () { despensa(); }, TD: TD, LG: LG,
+      libre: function (on) { if (!!pet.sinPedidos !== !!on) alternarLibre(); return !!pet.sinPedidos; }, superLibre: function () { superLibre(); }, comerAfuera: function (m) { comerAfuera(m); },
+      pagarLibre: function () { pagarLibre(); }, banoLibre: function () { banoLibre(); }, frotar: function (n) { for (var i = 0; i < n; i++) frotar(); },
       bano: function () { bano(); }, dormir: function () { dormitorio(); }, patio: function () { patio(); }, apagar: function () { apagar(); }, despertar: function () { despertar(); },
       patear: function (k, x) { if (S.futbol) S.futbol.patear(k, x); }, burbujas: function () { return (S.burbujas || []).filter(function (b) { return !b.userData.rota; }); },
       pagar: function () { (S.monedas || []).forEach(function (m) { if (m.userData.tocar) m.userData.tocar(); }); },

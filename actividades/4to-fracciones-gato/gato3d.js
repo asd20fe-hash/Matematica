@@ -1,11 +1,12 @@
 /* El gato come fracciones — Michi y su dueño en 3D, hechos de bloques con texturas de pixeles (three.js r128).
-   window.REF4_GATO3D = {montar(cont) → true si pudo, estado(cara), boca() → {x, y} en pantalla}.
-   Un solo renderer para toda la actividad: montar() mueve el mismo canvas al contenedor nuevo (la interfaz repinta seguido).
+   window.REF4_GATO3D = {fondo() → true si pudo, estado(cara), boca() → {x, y} en pantalla, activo(), alTocar(fn)}.
+   v1.1: a pantalla completa, detrás de la interfaz (como la mascota de Luz), en una isla de pasto con árboles,
+   flores y una sandía. La cámara deja a Michi a la izquierda (horizontal) o arriba (vertical), donde no tapa el panel.
    Caras/estados: normal, come (mastica y vuelan migas), feliz (saltan los dos), puaj (escupe y sacude la cabeza),
-   piensa (inclina la cabeza). Versión 1.0.0 (2026-10-19). */
+   piensa (inclina la cabeza). Versión 1.1.0 (2026-10-20). */
 (function (root) {
   'use strict';
-  var T = root.THREE, R = null, escena, camara, gato = {}, chico = {}, parts = [], estado = 'normal', tEstado = 0, reloj = 0, ult = 0, ok = null;
+  var T = root.THREE, R = null, cont = null, tocar = null, ray = null, escena, camara, gato = {}, chico = {}, parts = [], estado = 'normal', tEstado = 0, reloj = 0, ult = 0, ok = null;
   var PX = 1 / 16; // un pixel de textura = 1/16 de bloque
 
   /* ---------- texturas de pixeles ---------- */
@@ -74,6 +75,30 @@
     return g;
   }
 
+  /* ---------- el mundo: isla de pasto, árboles, flores y una sandía ---------- */
+  function bloque(w, h, d, mats) { return new T.Mesh(new T.BoxGeometry(w, h, d), mats.length ? mats : seis(mats)); }
+  function armarMundo() {
+    var g = new T.Group(), pasto = tex(16, 16, '#5fae3c', null, 0.5), costado = tex(16, 16, '#8a5a35', function (px) { px(0, 0, '#5fae3c', 16, 4); px(0, 4, '#6f9e35', 16, 1); }, 0.5);
+    var tierra = tex(16, 16, '#8a5a35', null, 0.5);
+    var isla = bloque(6.4, 0.5, 3.4, [costado, costado, pasto, tierra, costado, costado]); isla.position.set(0, -0.25, -0.3); g.add(isla);
+    var abajo = bloque(4.6, 0.5, 2.2, [tierra, tierra, tierra, tierra, tierra, tierra]); abajo.position.set(0, -0.75, -0.3); g.add(abajo);
+    var tronco = tex(8, 16, '#7a5230', function (px) { for (var x = 1; x < 8; x += 3) px(x, 0, '#5e3d22', 1, 16); }), hojas = tex(16, 16, '#3f8f2f', null, 0.6);
+    [[-2.5, -1.3, 1.3], [2.6, -1.4, 1.1], [-1.4, -1.7, 0.9]].forEach(function (a) {
+      var t = bloque(0.3, a[2] * 1.2, 0.3, tronco); t.position.set(a[0], a[2] * 0.6, a[1]); g.add(t);
+      var c = bloque(a[2], a[2] * 0.8, a[2], hojas); c.position.set(a[0], a[2] * 1.2 + a[2] * 0.3, a[1]); g.add(c);
+      var c2 = bloque(a[2] * 0.55, a[2] * 0.45, a[2] * 0.55, hojas); c2.position.set(a[0], a[2] * 1.2 + a[2] * 0.85, a[1]); g.add(c2);
+    });
+    var COL = ['#e5484d', '#f5c84a', '#ffffff', '#b07cff'];
+    [[-1.9, 0.6], [-2.8, 0.1], [1.7, 0.9], [2.9, 0.4], [-0.2, 1.0], [1.2, -0.8], [-2.2, -0.6], [2.2, -0.2]].forEach(function (a, i) {
+      var tallo = bloque(0.04, 0.18, 0.04, new T.MeshLambertMaterial({ color: 0x3f8f2f })); tallo.position.set(a[0], 0.09, a[1]); g.add(tallo);
+      var flor = bloque(0.11, 0.11, 0.11, new T.MeshLambertMaterial({ color: COL[i % COL.length] })); flor.position.set(a[0], 0.21, a[1]); g.add(flor);
+    });
+    var melon = tex(16, 16, '#5aa02c', function (px) { for (var x = 0; x < 16; x += 4) px(x, 0, '#3d7a1c', 2, 16); }), melonTapa = tex(16, 16, '#5aa02c', function (px) { px(3, 3, '#3d7a1c', 10, 10); px(5, 5, '#5aa02c', 6, 6); });
+    var sandia = bloque(0.42, 0.42, 0.42, [melon, melon, melonTapa, melon, melon, melon]); sandia.position.set(1.55, 0.21, 0.55); sandia.rotation.y = 0.4; g.add(sandia);
+    var tajada = bloque(0.3, 0.1, 0.2, [tex(8, 4, '#e5484d', function (px) { px(0, 3, '#5aa02c', 8, 1); px(2, 1, '#222222'); px(5, 1, '#222222'); })]); tajada.position.set(1.15, 0.05, 0.85); tajada.rotation.y = -0.3; g.add(tajada);
+    return g;
+  }
+
   /* ---------- migas, corazones y escupida (cubitos) ---------- */
   var cubo = null;
   function chispas(n, color, desde, vel) {
@@ -94,15 +119,17 @@
       R = new T.WebGLRenderer({ antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, root.devicePixelRatio || 1));
       R.domElement.className = 'gt-canvas';
       escena = new T.Scene();
-      camara = new T.PerspectiveCamera(30, 1.4, 0.1, 50); camara.position.set(0.25, 1.5, 4.6); camara.lookAt(0, 0.92, 0);
+      camara = new T.PerspectiveCamera(30, 1.4, 0.1, 80);
       escena.add(new T.HemisphereLight(0xffffff, 0x8a7a6a, 0.75));
       var sol = new T.DirectionalLight(0xffffff, 0.65); sol.position.set(2, 4, 3); escena.add(sol);
-      var piso = new T.Mesh(new T.BoxGeometry(3.2, 0.12, 1.6), [0, 0, 0, 0, 0, 0].map(function (_, i) {
-        return i === 2 ? tex(16, 8, '#5fae3c', null, 0.5) : tex(16, 8, '#8a5a35', function (px) { px(0, 0, '#5fae3c', 16, 2); }, 0.5);
-      }));
-      piso.position.set(0, -0.06, 0); escena.add(piso);
+      escena.add(armarMundo());
       var gg = armarGato(); gg.position.set(0.55, 0, 0.2); gg.rotation.y = -0.75; gg.scale.setScalar(1.2); escena.add(gg);
       var cc = armarChico(); cc.position.set(-0.7, 0, -0.1); cc.rotation.y = 0.35; escena.add(cc);
+      ray = new T.Raycaster();
+      R.domElement.addEventListener('pointerup', function (ev) {
+        var r = R.domElement.getBoundingClientRect(), v = new T.Vector2((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+        ray.setFromCamera(v, camara); if (ray.intersectObject(gato.g, true).length) { cambiar('feliz'); if (tocar) tocar(); }
+      });
       requestAnimationFrame(cuadro); ok = true;
     } catch (e) { ok = false; if (root.console) console.warn('[gato 3D] sin 3D, uso el dibujo:', e.message); }
     return ok;
@@ -113,9 +140,21 @@
     var c = R.domElement; if (!c.isConnected || document.hidden) { ult = ms; return; }
     var dt = Math.min(0.05, ult ? (ms - ult) / 1000 : 0.016); ult = ms; reloj += dt; tEstado += dt;
     var w = c.parentNode.clientWidth, h = c.parentNode.clientHeight;
-    if (w && h && (c.width !== Math.round(w * R.getPixelRatio()) || c.height !== Math.round(h * R.getPixelRatio()))) { R.setSize(w, h, false); camara.aspect = w / h; camara.updateProjectionMatrix(); }
+    if (w && h && (c.width !== Math.round(w * R.getPixelRatio()) || c.height !== Math.round(h * R.getPixelRatio()))) encuadrar(w, h);
     animar(dt);
     R.render(escena, camara);
+  }
+
+  // Michi y el chico van en la parte libre de la pantalla: a la izquierda en horizontal (el panel está a la derecha)
+  // o arriba en vertical. Se aleja la cámara hasta que entran y se corre la imagen con setViewOffset.
+  // Las mismas medidas que en gato.css (760 px y horizontal).
+  function encuadrar(w, h) {
+    R.setSize(w, h, false); camara.aspect = w / h;
+    var horiz = w >= 760 && w >= h, zx = horiz ? 0.34 : 0.96, zy = horiz ? 0.66 : 0.26, cx = horiz ? 0.22 : 0.5, cy = horiz ? 0.55 : 0.22;
+    var tg = Math.tan(camara.fov * Math.PI / 360), d = Math.max(3 / (zx * 2 * tg * camara.aspect), 2.3 / (zy * 2 * tg));
+    var dir = new T.Vector3(0.06, 0.2, 1).normalize(), mira = new T.Vector3(0, 0.95, 0);
+    camara.position.copy(mira).addScaledVector(dir, d); camara.lookAt(mira);
+    camara.setViewOffset(w, h, w * (0.5 - cx), h * (0.5 - cy), w, h); camara.updateProjectionMatrix();
   }
 
   function animar(dt) {
@@ -155,8 +194,13 @@
   }
 
   var API = {
-    // Pone el canvas dentro de cont (si no hay WebGL o three.js devuelve false y la interfaz usa el emoji).
-    montar: function (cont) { if (!cont || !crear()) return false; if (R.domElement.parentNode !== cont) cont.appendChild(R.domElement); return true; },
+    // Pone la escena a pantalla completa detrás de la interfaz (sin WebGL o three.js devuelve false y la interfaz usa el emoji).
+    fondo: function () {
+      if (!crear()) return false;
+      if (!cont) { cont = document.createElement('div'); cont.id = 'gt-mundo'; cont.setAttribute('aria-hidden', 'true'); document.body.insertBefore(cont, document.body.firstChild); cont.appendChild(R.domElement); }
+      return true;
+    },
+    alTocar: function (fn) { tocar = fn; },
     estado: function (c) { if (!ok) return; if (c === 'normal' && estado !== 'normal' && tEstado < 0.6) return; if (c !== estado || c !== 'normal') cambiar(c); },
     // Dónde está la boca de Michi en la pantalla (para que las fichas vuelen ahí).
     boca: function () {

@@ -1,6 +1,9 @@
 /* El gato come fracciones (fracciones de 4to) — interfaz.
    ------------------------------------------------------------
    Historial de cambios
+   v1.2.0  (2026-10-20) Michi a pantalla completa
+     + La escena 3D ocupa toda la pantalla, detrás del panel (como la mascota de Luz): una isla de pasto con árboles,
+       flores y una sandía. Michi queda a la izquierda (horizontal) o arriba (vertical); tocarlo lo pone contento.
    v1.1.0  (2026-10-19) Michi en 3D
      + Michi y su dueño son de bloques en 3D (gato3d.js, three.js r128): mastica con migas, salta con corazones,
        escupe lo que no vale y ladea la cabeza cuando piensa. Las fichas vuelan a su boca.
@@ -13,22 +16,21 @@
    ------------------------------------------------------------ */
 (function () {
   'use strict';
-  var VERSION = '1.1.0', ACT = '4to-fracciones-gato';
+  var VERSION = '1.2.0', ACT = '4to-fracciones-gato';
   var FRUI = REF4_FRUI, FR = REF4_FR, G = REF4_GATO, G3D = window.REF4_GATO3D, cf = FRUI.conFracciones;
   var txt = function (f) { return f.d === 1 ? String(f.n) : f.n + '/' + f.d; };
   var TEXTO_PASO = { come: 'darle de comer a Michi', entero: 'escribir cuántos enteros son', queda: 'escribir lo que queda', simple: 'escribir la fracción de otra forma',
     mixto: 'escribir los enteros y la fracción', junta: 'escribir cuánto es en total' };
   var CARA = { normal: '🐱', come: '😋', feliz: '😸', puaj: '😾', piensa: '🙀' };
 
+  // Michi en 3D a pantalla completa (detrás del panel); sin 3D, el emoji al lado de lo que dice.
+  var EN3D = !!(G3D && G3D.fondo());
+  if (EN3D) document.body.classList.add('gt-3d');
   function gato(est, dice) {
-    return '<div class="gt-escena"><div class="gt-gato ' + (est.cara || 'normal') + '" id="gato" aria-hidden="true"></div>' +
+    return '<div class="gt-escena">' + (EN3D ? '' : '<div class="gt-gato ' + (est.cara || 'normal') + '" id="gato" aria-hidden="true"></div>') +
       '<div class="gt-dice">' + cf(dice) + '</div></div>';
   }
-  // Pone a Michi en 3D en su lugar (es siempre el mismo canvas); si no se puede, el emoji.
-  function montarGato(est) {
-    var g = document.getElementById('gato'); if (!g) return;
-    if (G3D && G3D.montar(g)) g.classList.add('g3d'); else g.textContent = CARA[est.cara || 'normal'];
-  }
+  function montarGato(est) { var g = document.getElementById('gato'); if (g) g.textContent = CARA[est.cara || 'normal']; }
   function tira(f, op) {
     op = op || {};
     var enteros = Math.max(1, Math.ceil(f.n / f.d)), h = '<div class="gt-tiras">';
@@ -80,7 +82,7 @@
   function cara(api, c, dice, ms) {
     var est = api.est, g = document.getElementById('gato'), d = document.querySelector('.gt-dice');
     est.cara = c; if (dice !== undefined) est.dice = dice;
-    if (G3D && G3D.activo()) G3D.estado(c);
+    if (EN3D) G3D.estado(c);
     else if (g) { g.className = 'gt-gato ' + c; g.textContent = CARA[c]; }
     if (d && dice !== undefined) d.innerHTML = cf(dice);
     clearTimeout(est.tCara);
@@ -96,8 +98,9 @@
     else cara(api, 'piensa', undefined, 1400);
   }
   function volarAlGato(b, listo) {
-    var g = document.getElementById('gato'); if (!g || !b) return listo();
-    var rb = b.getBoundingClientRect(), rg = g.getBoundingClientRect(), boca = (G3D && G3D.boca()) || { x: rg.left + rg.width / 2, y: rg.top + rg.height * 0.6 };
+    var g = document.getElementById('gato'), boca = EN3D && G3D.boca();
+    if (!b || (!g && !boca)) return listo();
+    var rb = b.getBoundingClientRect(), rg = boca ? null : g.getBoundingClientRect(); boca = boca || { x: rg.left + rg.width / 2, y: rg.top + rg.height * 0.6 };
     b.style.setProperty('--dx', (boca.x - rb.left - rb.width / 2) + 'px');
     b.style.setProperty('--dy', (boca.y - rb.top - rb.height / 2) + 'px');
     b.classList.add('vuela');

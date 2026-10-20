@@ -1,4 +1,4 @@
-# Mi mascota en inglés (1ro) — v1.7.0
+# Mi mascota en inglés (1ro) — v1.8.0
 
 Luz cuida a una mascota virtual en una casa 3D y aprende inglés con Miss Hoot, la profe búho: la profe da órdenes ("Paint Mimi blue!", "Give Mimi an apple!", "Touch Mimi's nose!") y Luz las cumple con la mascota. Con las ⭐ que gana va al supermercado: la mascota pide ("I want two bananas!"), Luz lo busca en la góndola, paga en la caja contando monedas en inglés y después le da de comer lo comprado (despensa). Además hay baño (lavar partes del cuerpo y reventar burbujas contando), dormitorio (ordenar juguetes, apagar la luz y dormir) y patio (patear al arco con una gomera). En el cambiador (un placard en la habitación) le pone y le saca ropa 3D y compra prendas nuevas con sus ⭐. Con "Mimi says!" aprende verbos (la mascota salta, baila, aplaude…) y cada palabra que juega se gana como figurita para el 📒 álbum. En 🚌 Salidas va al café, al restaurante, a la escuela y al cine. Al llegar, la profe pregunta "How is Mimi?" y Luz toca la carita según lo que le pasa. Al inclinar la tablet la escena se mueve un poco y la pantalla no se apaga mientras juega (Wake Lock).
 
@@ -52,6 +52,12 @@ Luz cuida a una mascota virtual en una casa 3D y aprende inglés con Miss Hoot, 
 
 ## Merienda (🧁)
 - Botón de la casa: tres fichas (☕ COFFEE "cafecito", que no está en el vocabulario, solo acá; 🧁 CUPCAKE y 🧃 JUICE del tema cafe). Luz toca o arrastra una a la boca: la profe dice la palabra ("Some coffee!"), la mascota la come o la toma (`pip.comer`), hace una acción (café: jump y +15 energía; cupcake: dance, +12 panza; jugo: clap, +8 panza) y vuelven a salir las tres. Con la panza ≥ 95 dice "I'm full!" (el café igual lo toma). No se registra. Los datos están en `MERIENDA` de juego.js.
+
+## Modo libre (🕊️)
+- Botón 🕊️ Libre en la fila de arriba de la casa; queda en `pet.sinPedidos`. `libre()` es verdadero salvo en la lección, los juegos (`S.modo` `libre`, que es otra cosa: el juego suelto) y la escuela: ahí todo sigue igual.
+- La mascota no habla (`pipDice` y las líneas `quien:'pip'` de `charla` se saltean) ni pide; al llegar a la casa no hay saludo, "How is Mimi?" ni avisos.
+- `superLibre`: góndola al azar (🔄 `ponerGondola` cambia las cosas), tocar lleva al carrito (`S.carro`, hasta las ⭐ que tiene y como mucho 10), 💰 paga con la caja de siempre (`caja`/`cobrado`). `despensaLibre` y `comerAfuera('cafe'|'resto')` usan `mesaLibre(items, tk, alDar, rearmar)` (fichas para tocar o arrastrar a la boca, con etiqueta de precio o cantidad); en el café y el restaurante la cuenta (`S.cuenta`) se paga con `cobrar` al final (sin pagar no se puede volver). `banoLibre`: frotar con el dedo (`frotar`, +5 de limpieza cada 8 roces); el dormitorio va directo a la cama. Las salidas muestran solo café y restaurante. Nada de esto se registra.
+- Debug: `__pip.libre(true)`, `superLibre()`, `comerAfuera('cafe')`, `pagarLibre()`, `banoLibre()`, `frotar(n)`.
 
 ## Álbum de figuritas
 - 📒 en la casa (con la cantidad para pegar, y late) y "¡N figuritas nuevas!" en el resumen. Una página por tema (pestañas con `pegadas/total` y un punto rojo si hay sobres) con todas las palabras del tema, de cualquier nivel.

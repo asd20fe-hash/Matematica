@@ -22,6 +22,9 @@ body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:trans
   background:conic-gradient(var(--c) calc(var(--v)*1%),var(--ing-anillo) 0)}
 .ing-anillo span{width:30px;height:30px;border-radius:50%;background:var(--ing-card);display:grid;place-items:center}
 .ing-moneda{font-size:22px}
+.ing-libre{border:0;font:inherit;color:inherit;cursor:pointer;min-height:48px;padding:4px 12px 4px 8px;font-size:22px}
+.ing-libre span{font-size:16px}
+.ing-libre.on{background:var(--accent2);color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.6)}
 .ing-burbuja.salta{animation:ing-salta .5s ease}
 @keyframes ing-salta{40%{transform:scale(1.25)}}
 /* cartel de la orden */
