@@ -6,14 +6,6 @@
    REF4_PANEL.ERRORES y REF4_FR.ERRORES). */
 (function(){
 'use strict';
-// Tiempo de hoy en tramos (modo libre y aprendizaje), de lo guardado en mate.<perfil>.<act>.tramos.
-function tiempoHoy(perfil,act){
-  let l=[]; try{ l=JSON.parse(localStorage.getItem('mate.'+perfil+'.'+act+'.tramos')||'[]')||[]; }catch(e){}
-  const hoy=new Date().toDateString(), h=t=>{ const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
-  const de=l.filter(t=>new Date(t.desde).toDateString()===hoy); if(!de.length) return ' Hoy no jugó.';
-  const min=c=>Math.round(de.filter(t=>t.clase===c).reduce((a,t)=>a+t.hasta-t.desde,0)/60000);
-  return ' Hoy: aprendizaje '+min('aprendizaje')+' min, libre '+min('libre')+' min ('+de.map(t=>h(t.desde)+'–'+h(t.hasta)+' '+(t.clase==='libre'?'🕊️':'🦉')).join(', ')+').';
-}
 MATE.actividades=[
   {id:'tabla100',titulo:'Saltos en la Tabla del 100',descripcion:'Sumá y restá saltando en la tabla.',icono:'🔢',grados:['1ro'],ruta:'actividades/1ro-tabla100/index.html',version:'1.10',
    errores:{SALTO_DIRECCION:'Saltó para el lado contrario (sumó en vez de restar o al revés)',SALTO_FILAS:'Saltó una cantidad de filas equivocada',SALTO_COLUMNA:'Se salió de la columna (mezcló saltos de 10 con saltos de 1)',
@@ -25,12 +17,12 @@ MATE.actividades=[
   {id:'1ro-ingles',nivelMax:3,analisis:'palabras',titulo:'English',descripcion:'Escuchá palabras en inglés y tocá el dibujo.',icono:'🇺🇸',grados:['1ro'],ruta:'actividades/1ro-ingles/index.html',version:'1.0.1',
    errores:{CONFUNDE_TEMA:'Confundió con otra palabra del mismo tema (DOG por CAT)',CONFUNDE_PARECIDA:'Confundió con una palabra que suena parecido (TREE por THREE)',CONFUNDE_OTRA:'Eligió otra palabra',SI_NO_MAL:'Contestó mal "¿es esto un…?"',LEE_MAL:'Leyó mal la palabra en inglés'}},
   // Inglés con mascota: el código común está en _comun-ingles/ (temas, juegos, mascota, mundo 3D).
-  {id:'1ro-ingles-mascota',nivelMax:3,analisis:'palabras',titulo:'Mi mascota en inglés',descripcion:'Cuidá a tu mascota: súper, baño, a dormir y fútbol en el patio, contar, cómo se siente, la ropa (cambiador y tienda), acciones ("Mimi says!"), un álbum de figuritas, salidas al café, al restaurante, a la escuela y al cine y una merienda (cafecito, cupcake y juguito), todo en inglés con Miss Hoot.',icono:'🐾',grados:['1ro'],ruta:'actividades/1ro-ingles-mascota/index.html',version:'1.9.0',
+  {id:'1ro-ingles-mascota',nivelMax:3,analisis:'palabras',titulo:'Mi mascota en inglés',descripcion:'Cuidá a tu mascota: súper, baño, a dormir y fútbol en el patio, contar, cómo se siente, la ropa (cambiador y tienda), acciones ("Mimi says!"), un álbum de figuritas, salidas al café, al restaurante, a la escuela y al cine y una merienda (cafecito, cupcake y juguito), todo en inglés con Miss Hoot.',icono:'🐾',grados:['1ro'],ruta:'actividades/1ro-ingles-mascota/index.html',version:'1.9.1',
    errores:{CONFUNDE_TEMA:'Confundió con otra palabra del mismo tema (BLUE por RED)',CONFUNDE_PARECIDA:'Confundió con una palabra que suena parecido (TREE por THREE)',CONFUNDE_OTRA:'Eligió otra palabra',CANTIDAD_MAL:'Eligió otra cantidad ("How many?")',COLOR_MAL:'Eligió la prenda pedida pero de otro color ("Dress up!")'},
    stats:()=>MATE.perfiles.filter(p=>p.grado==='1ro').map(p=>{ let m=null; try{ m=JSON.parse(localStorage.getItem('mate.'+p.id+'.1ro-ingles-mascota.pet')||'null'); }catch(e){}
      if(!m||!m.nacido) return p.nombre+': la mascota todavía no nació.';
      const d=Object.values(m.despensa||{}).reduce((a,b)=>a+b,0);
-     return p.nombre+': '+m.nombre+', '+m.monedas+' ⭐, '+m.lecciones+' lecciones, '+m.aciertos+' aciertos, '+d+' comidas en la despensa, '+(m.ropa||[]).length+' prendas de ropa, '+(m.album||[]).length+' figuritas en el álbum, '+Object.values(m.salidas||{}).reduce((a,b)=>a+b,0)+' salidas.'+tiempoHoy(p.id,'1ro-ingles-mascota'); }).join(' ')},
+     return p.nombre+': '+m.nombre+', '+m.monedas+' ⭐, '+m.lecciones+' lecciones, '+m.aciertos+' aciertos, '+d+' comidas en la despensa, '+(m.ropa||[]).length+' prendas de ropa, '+(m.album||[]).length+' figuritas en el álbum, '+Object.values(m.salidas||{}).reduce((a,b)=>a+b,0)+' salidas.'; }).join(' ')},
   {id:'1ro-lectura',nivelMax:3,analisis:'preguntas',titulo:'Leé y contestá',descripcion:'Leé la pregunta, mirá el dibujo y contestá.',icono:'📚',grados:['1ro'],ruta:'actividades/1ro-lectura/index.html',version:'1.0.2',
    errores:{CUENTA_TODOS:'Contó todos: no leyó la condición de la pregunta',REPITE_ANTERIOR:'Repitió la respuesta anterior del mismo dibujo (no leyó la pregunta nueva)',LEE_OTRO:'Contó otra cosa (otro color, otro juguete u otra condición)',
      CUENTA_POR_UNO:'Contó uno de más o de menos',CUENTA_MAL:'Contó mal',NO_LEE_COLOR:'Tocó el juguete pedido pero de otro color',NO_LEE_OBJETO:'Tocó el color pedido pero otro juguete',NO_LEE_ATRIBUTO:'Tocó un patito que no cumple lo pedido',

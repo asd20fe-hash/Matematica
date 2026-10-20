@@ -16,7 +16,7 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 ## Estructura
 
 ```
-index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN y "Reiniciar progreso" (v2.8)
+index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN, "Reiniciar progreso" y "⏱️ Tiempo de juego" (v2.9)
 sw.js                   modo sin conexión: guarda toda la app (ARCHIVOS), three.js y las fuentes; core.js lo registra con http/https
 manifest.webmanifest    instalación como app en pantalla completa (íconos en core/iconos/; el shell lo enlaza solo con http/https)
 perfiles.js             MATE.perfiles = [{id,nombre,grado,avatar,color}] + los creados en el dispositivo
@@ -33,7 +33,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 ## Reglas
 
 - **Sin compilar:** sin bundlers, npm ni build. Varios archivos, scripts clásicos (sin ES modules ni `fetch` local, porque no funcionan en `file://`), todo colgado de `MATE`.
-- **Versiones:** el shell tiene la suya (v2.8) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
+- **Versiones:** el shell tiene la suya (v2.9) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
 - **Modo claro/oscuro:** tokens CSS en `:root` con overrides por `[data-theme]` (media query y atributo). Todo color o elemento nuevo tiene que verse bien en los dos modos.
 - **Textos en español rioplatense con voseo** ("Elegí", "Probá"); comentarios y logs también en español. Cada actividad decide su tono y tipografía: la de Luz usa frases cortas y MAYÚSCULAS de imprenta; eso no es regla del shell.
 - Estilo compacto: nombres cortos, varias sentencias por línea, sin frameworks.
@@ -51,6 +51,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - `MATE.log(tag, ...)`, `MATE.ver(el)`.
 - `MATE.pantalla` `{disponible, activa(), instalada(), alternar(), boton(junto)}`: core.js pone solo el botón ⛶ antes de `#tema`/`#themeBtn` en cada página. Queda prendida en `mate.global.pantalla` y se vuelve a pedir con el primer toque al abrir otra página (el navegador la apaga al navegar). Navegar con `MATE.irMenu`/`MATE.abrir` para que no cuente como apagarla.
 - `MATE.offline` `{disponible(), listo(), estado()}`: registra `sw.js` y cada 6 h con internet le pide que vuelva a bajar todo (`mate.global.offline.ts`).
+- `MATE.tiempo`: en toda página de actividad (la que coincide con una `ruta` del registro) arma solo tramos de tal hora a tal hora, `aprendizaje` por defecto; la actividad puede poner `MATE.tiempo.clase = () => 'libre'|'aprendizaje'|null` y `MATE.tiempo.ocupado = () => bool` (la mascota lo hace). Se cortan al cambiar de clase, con la pestaña oculta o sin tocar 3 minutos. Cada tramo va a la planilla (`tipo:'tramo'`, `tema` = clase, `desde`/`hasta`, `ms`) y queda en `mate.<perfil>.tiempo.tramos` y `.totales`; `resumen(perfil)` da hoy, 7 días y total (lo muestra Ajustes de padres).
 - `MATE.pin.check/set`: en `mate.global.pin`, por defecto 1234 (hash simple; es un candado para chicos, no seguridad).
 
 ## Contrato de una actividad

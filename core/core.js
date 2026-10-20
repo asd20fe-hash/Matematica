@@ -1,5 +1,8 @@
 /* Matemática — núcleo compartido. Único global: MATE. Script clásico (sin módulos).
    Historial de cambios
+   v2.6  Tiempo de juego
+     + MATE.tiempo: en cada actividad arma tramos de tal hora a tal hora (aprendizaje o libre), los manda a la planilla
+       (tipo:'tramo') y los guarda por perfil con los totales. Se cortan con la pestaña oculta o sin tocar 3 minutos.
    v2.5  Modo sin conexión
      + Registra el service worker (sw.js, en la raíz) con http/https: la app queda guardada y anda sin internet.
      + Una vez cada 6 h, con internet, le pide que vuelva a bajar todo (mate.global.offline.ts).
@@ -20,7 +23,7 @@
 */
 (function(){
 'use strict';
-const VERSION='2.5';
+const VERSION='2.6';
 const MATE=window.MATE=window.MATE||{};
 MATE.version=VERSION;
 MATE.perfiles=MATE.perfiles||[];
@@ -270,6 +273,55 @@ MATE.offline=(()=>{
       .catch(e=>MATE.log('offline','no se pudo registrar',e.message));
   });
   return O;
+})();
+
+/* ==== TIEMPO DE JUEGO: tramos de tal hora a tal hora en cada actividad ==== */
+// En una página de actividad (la que coincide con una ruta del registro) arma tramos de una sola clase:
+// 'aprendizaje' por defecto; la actividad puede poner MATE.tiempo.clase = () => 'libre' | 'aprendizaje' | null (null no cuenta)
+// y MATE.tiempo.ocupado = () => true mientras pasa algo sin toques (una voz que habla). Se corta al cambiar de clase,
+// con la pestaña oculta o sin tocar la pantalla 3 minutos (termina en el último toque); menos de 10 s no se guarda.
+// Cada tramo va a la planilla ({tipo:'tramo', tema: clase, desde:'16:02', hasta:'16:20', ms}) y queda en
+// mate.<perfil>.tiempo.tramos (los últimos 1500) y en mate.<perfil>.tiempo.totales ({aprendizaje, libre, act:{id: ms}}).
+MATE.tiempo=(()=>{
+  const PAUSA=3*60000, hh=t=>{ const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  const k=(p,c)=>'mate.'+p+'.tiempo.'+c;
+  let act=null, tramo=null, ult=Date.now();
+  const T={ clase:()=>'aprendizaje', ocupado:()=>false, hh,
+    act:()=>act, actual:()=>tramo,
+    tramos:p=>ls.get(k(p,'tramos'),[])||[],
+    totales:p=>ls.get(k(p,'totales'),null)||{aprendizaje:0,libre:0,act:{}},
+    // {hoy, semana, total}: cada uno {aprendizaje, libre, total} en ms; hoy trae además la lista de tramos.
+    resumen:p=>{
+      const l=T.tramos(p), hoy=new Date().toDateString(), semana=Date.now()-7*864e5, suma=x=>{ const r={aprendizaje:0,libre:0}; x.forEach(t=>{ r[t.clase]=(r[t.clase]||0)+t.hasta-t.desde; }); r.total=r.aprendizaje+r.libre; return r; };
+      const de=l.filter(t=>new Date(t.desde).toDateString()===hoy), tot=T.totales(p);
+      return {hoy:Object.assign(suma(de),{tramos:de}), semana:suma(l.filter(t=>t.desde>=semana)), total:{aprendizaje:tot.aprendizaje,libre:tot.libre,total:tot.aprendizaje+tot.libre,act:tot.act}};
+    },
+    cerrar:fin=>{
+      if(!tramo) return; const t=tramo; tramo=null; fin=Math.max(t.desde,fin||Date.now()); const ms=fin-t.desde;
+      if(ms<10000) return;
+      MATE.ejercicio(t.act,{tipo:'tramo',tema:t.clase,paso:t.clase,desde:hh(t.desde),hasta:hh(fin),respuesta:hh(t.desde)+'-'+hh(fin),ms,inicio:t.desde,fin});
+      let l=T.tramos(t.perfil); l.push({act:t.act,clase:t.clase,desde:t.desde,hasta:fin}); if(l.length>1500) l=l.slice(-1500); ls.set(k(t.perfil,'tramos'),l);
+      const tot=T.totales(t.perfil); tot[t.clase]=(tot[t.clase]||0)+ms; tot.act[t.act]=(tot.act[t.act]||0)+ms; ls.set(k(t.perfil,'totales'),tot);
+      MATE.log('tiempo',t.act,t.clase,hh(t.desde)+'-'+hh(fin),Math.round(ms/60000)+' min');
+    },
+    vigilar:()=>{
+      const ahora=Date.now(); if(T.ocupado()) ult=ahora;
+      const p=MATE.perfil(), quieto=ahora-ult>PAUSA, c=act&&p&&!document.hidden&&!quieto?T.clase():null;
+      if(tramo&&(tramo.clase!==c||tramo.perfil!==(p&&p.id))) T.cerrar(quieto?ult:ahora);
+      if(!tramo&&c) tramo={act,perfil:p.id,clase:c,desde:ahora};
+    }
+  };
+  const arrancar=()=>{
+    const ruta=decodeURI(location.pathname), a=MATE.actividades.find(x=>{ const r=x.ruta.replace(/index\.html$/,''); return ruta.endsWith(x.ruta)||ruta.endsWith(r); });
+    if(!a) return; act=a.id;
+    setInterval(T.vigilar,5000); T.vigilar();
+    document.addEventListener('pointerdown',()=>{ ult=Date.now(); T.vigilar(); },true);
+    document.addEventListener('keydown',()=>{ ult=Date.now(); },true);
+    document.addEventListener('visibilitychange',T.vigilar);
+    window.addEventListener('pagehide',()=>T.cerrar(Date.now()));
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arrancar); else setTimeout(arrancar,0);
+  return T;
 })();
 
 MATE.log('core','listo');

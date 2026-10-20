@@ -1,4 +1,4 @@
-# Mi mascota en inglés (1ro) — v1.9.0
+# Mi mascota en inglés (1ro) — v1.9.1
 
 Luz cuida a una mascota virtual en una casa 3D y aprende inglés con Miss Hoot, la profe búho: la profe da órdenes ("Paint Mimi blue!", "Give Mimi an apple!", "Touch Mimi's nose!") y Luz las cumple con la mascota. Con las ⭐ que gana va al supermercado: la mascota pide ("I want two bananas!"), Luz lo busca en la góndola, paga en la caja contando monedas en inglés y después le da de comer lo comprado (despensa). Además hay baño (lavar partes del cuerpo y reventar burbujas contando), dormitorio (ordenar juguetes, apagar la luz y dormir) y patio (patear al arco con una gomera). En el cambiador (un placard en la habitación) le pone y le saca ropa 3D y compra prendas nuevas con sus ⭐. Con "Mimi says!" aprende verbos (la mascota salta, baila, aplaude…) y cada palabra que juega se gana como figurita para el 📒 álbum. En 🚌 Salidas va al café, al restaurante, a la escuela y al cine. Al llegar, la profe pregunta "How is Mimi?" y Luz toca la carita según lo que le pasa. Al inclinar la tablet la escena se mueve un poco y la pantalla no se apaga mientras juega (Wake Lock).
 
@@ -60,8 +60,7 @@ Luz cuida a una mascota virtual en una casa 3D y aprende inglés con Miss Hoot, 
 - Debug: `__pip.libre(true)`, `superLibre()`, `comerAfuera('cafe')`, `pagarLibre()`, `banoLibre()`, `frotar(n)`.
 
 ## Tiempo de juego (tramos)
-- `vigilarTramo()` (cada 5 s, en cada toque y en cada `pintarHUD`) arma tramos de una sola clase: **aprendizaje** (lección, juegos, escuela y todo con el modo libre apagado) o **libre** (🕊️ prendido). Se cortan al cambiar de clase, con la pestaña oculta o sin tocar 3 minutos (termina en el último toque; mientras habla la profe cuenta como actividad). Menos de 10 s no se guarda.
-- Cada tramo va a la planilla como `{tipo:'tramo', tema/paso: clase, desde:'16:02', hasta:'16:20', respuesta:'16:02-16:20', ms, inicio, fin}` y queda en `mate.<perfil>.1ro-ingles-mascota.tramos` (los últimos 300). `tiempoHoy()` de registro.js lo resume en Ajustes de padres.
+- Lo lleva `MATE.tiempo` de core.js (igual que en todas las actividades); acá `MATE.tiempo.clase` dice **aprendizaje** (lección, juegos, escuela y todo con el modo libre apagado) o **libre** (🕊️ prendido), y `MATE.tiempo.ocupado` cuenta como actividad mientras habla la profe. `pintarHUD` llama a `MATE.tiempo.vigilar()` para que el cambio de clase corte el tramo enseguida. El resumen está en "⏱️ Tiempo de juego" de Ajustes de padres.
 
 ## Álbum de figuritas
 - 📒 en la casa (con la cantidad para pegar, y late) y "¡N figuritas nuevas!" en el resumen. Una página por tema (pestañas con `pegadas/total` y un punto rojo si hay sobres) con todas las palabras del tema, de cualquier nivel.
