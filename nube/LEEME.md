@@ -20,6 +20,7 @@ Si después cambiás el script, usá **Implementar → Administrar implementacio
 ## Qué se guarda
 
 - Hoja `eventos`: `fecha`, `perfil`, `dispositivo`, `act` (actividad), `tema`, `paso`, `intento`, `ok`, `error` (código), `esperado`, `respuesta`, `ms` (tiempo), `ayuda`, `item` (el ejercicio) y `extra` (lo demás, en JSON).
+- Entradas: cada vez que un dispositivo abre una página va una fila `tipo` = `conexion` (`paso`: entrada, recarga, navegacion o atras) y cada vez que se elige o cambia de perfil, una `tipo` = `perfil` (`paso`: elige o cambio; el perfil anterior va en `extra`). Con eso y los ejercicios, Ajustes de padres muestra "Tiempo por dispositivo".
 - Hoja `perfiles` y `dispositivos`: nombres para mostrar.
 - Los nombres de los errores para padres están en el código (registro.js y los paneles de 4to); el panel los muestra traducidos.
 

@@ -1,4 +1,6 @@
-/* Matemática — panel "Registro en la nube" de Ajustes de padres (solo lo carga el shell). Versión 1.0 (2026-10-14).
+/* Matemática — panel "Registro en la nube" de Ajustes de padres (solo lo carga el shell). Versión 1.1 (2026-10-29).
+   v1.1 + "Tiempo por dispositivo": arma las visitas con las entradas (tipo:'conexion' y 'perfil' de core.js v2.7), los
+          ejercicios y los tramos; una visita se corta con 15 minutos sin nada. Desde, hasta, duración, perfiles y entradas.
    - Este dispositivo: nombre, envíos pendientes, dirección de la planilla, enviar ahora y subir el historial.
    - Registro: con la clave de lectura trae todo de la planilla y muestra, por perfil y dispositivo, el resumen por
      actividad, los errores más frecuentes y la lista de cada error; descarga en CSV o JSON. */
@@ -45,7 +47,22 @@ function analisis(evs,a){
   }
   return h;
 }
-const tituloAct=id=>{ const a=MATE.actividades.find(x=>x.id===id); return a?a.icono+' '+a.titulo:id; };
+const tituloAct=id=>{ if(id==='menu') return '🏠 Menú'; const a=MATE.actividades.find(x=>x.id===id); return a?a.icono+' '+a.titulo:id; };
+/* Visitas por dispositivo: todos sus eventos en orden (un tramo cuenta desde su inicio hasta su fin); 15 minutos sin
+   ningún evento cortan la visita. Duración = del primero al último. */
+const CORTE=15*60000;
+function visitas(evs){
+  const porD={}; evs.forEach(e=>{ if(!e.dispositivo||!e.ts) return; const a=+e.inicio||e.ts, b=+e.fin||e.ts; (porD[e.dispositivo]=porD[e.dispositivo]||[]).push({a,b,e}); });
+  const res=[];
+  Object.keys(porD).forEach(d=>{ let v=null; porD[d].sort((x,y)=>x.a-y.a).forEach(x=>{
+    if(!v||x.a-v.hasta>CORTE){ v={disp:d,desde:x.a,hasta:x.b,perfiles:new Set(),entradas:0,recargas:0,cambios:0,ejercicios:0}; res.push(v); }
+    v.hasta=Math.max(v.hasta,x.b); if(x.e.perfil) v.perfiles.add(x.e.perfil);
+    if(x.e.tipo==='conexion'){ if(x.e.paso==='recarga') v.recargas++; else v.entradas++; }
+    else if(x.e.tipo==='perfil'&&x.e.paso==='cambio') v.cambios++;
+    else if(x.e.tipo==='paso'&&x.e.intento>=1) v.ejercicios++;
+  }); });
+  return res.sort((x,y)=>y.desde-x.desde);
+}
 function item(v){
   let o=v; if(typeof o==='string'){ if(!o) return ''; try{ o=JSON.parse(o); }catch(e){ return o; } }
   if(!o||typeof o!=='object') return String(o);
@@ -103,6 +120,12 @@ function pintar(el){
     return '<tr><td>'+esc(nomP(g.perfil))+'</td><td>'+esc(tituloAct(g.act))+'</td><td>'+g.dias.size+'</td><td>'+g.n+'</td><td>'+(g.p1?Math.round(100*g.ok1/g.p1)+' %':'—')+'</td><td style="text-align:left">'+(top||'—')+'</td></tr>'; }).join('')+'</tbody></table></div>':'<p class="sub">No hay ejercicios en este filtro.</p>');
   // análisis por palabra o por pregunta (lectura y escritura)
   MATE.actividades.filter(a=>a.analisis&&(!filtro.act||filtro.act===a.id)).forEach(a=>{ h+=analisis(evs,a); });
+  // tiempo por dispositivo (visitas)
+  const vs=visitas(evs), dur=ms=>{ const m=Math.round(ms/60000); return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' min'; }, hora=t=>new Date(t).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  const totD={}; vs.forEach(v=>{ totD[v.disp]=(totD[v.disp]||0)+v.hasta-v.desde; });
+  h+='<h3>Tiempo por dispositivo</h3>'+(vs.length?'<p><small>'+Object.keys(totD).map(d=>esc(nomD(d))+': <b>'+dur(totD[d])+'</b>').join(' · ')+'</small></p><div class="nube-scroll"><table class="fr4-mapa nube-err"><thead><tr><th>Día</th><th>Dispositivo</th><th>Desde–hasta</th><th>Duración</th><th>Perfiles</th><th>Entradas</th><th>Recargas</th><th>Cambios de perfil</th><th>Ejercicios</th></tr></thead><tbody>'+
+    vs.slice(0,60).map(v=>'<tr><td>'+new Date(v.desde).toLocaleDateString('es-AR',{dateStyle:'short'})+'</td><td>'+esc(nomD(v.disp))+'</td><td>'+hora(v.desde)+'–'+hora(v.hasta)+'</td><td>'+dur(v.hasta-v.desde)+'</td><td style="white-space:normal">'+([...v.perfiles].map(p=>esc(nomP(p))).join(', ')||'—')+'</td><td>'+v.entradas+'</td><td>'+v.recargas+'</td><td>'+v.cambios+'</td><td>'+v.ejercicios+'</td></tr>').join('')+
+    '</tbody></table></div><p><small>Una visita se corta con 15 minutos sin entradas ni ejercicios.</small></p>':'<p class="sub">No hay entradas en este filtro.</p>');
   // lista de errores
   h+='<h3>Cada error ('+errs.length+')</h3>'+(errs.length?'<div class="nube-scroll"><table class="fr4-mapa nube-err"><thead><tr><th>Fecha</th><th>Perfil</th><th>Dispositivo</th><th>Actividad</th><th>Paso</th><th>Ejercicio</th><th>Esperado</th><th>Puso</th><th>Error</th></tr></thead><tbody>'+
     errs.slice(0,cuantos).map(e=>'<tr><td>'+fecha(e.ts)+'</td><td>'+esc(nomP(e.perfil))+'</td><td>'+esc(nomD(e.dispositivo))+'</td><td>'+esc(tituloAct(e.act))+'</td><td>'+esc(e.paso)+(e.intento>1?' <small>(intento '+e.intento+')</small>':'')+'</td><td>'+esc(item(e.item))+'</td><td>'+esc(e.esperado)+'</td><td>'+esc(e.respuesta)+'</td><td>'+esc(e.error?nombreError(e.act,e.error):'—')+(e.ayuda&&e.ayuda!=='ninguna'?' <small>(con ayuda)</small>':'')+'</td></tr>').join('')+

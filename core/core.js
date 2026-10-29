@@ -1,5 +1,11 @@
 /* Matemática — núcleo compartido. Único global: MATE. Script clásico (sin módulos).
    Historial de cambios
+   v2.7  Conexiones y perfiles por dispositivo
+     + MATE.conexion: cada vez que se abre una página manda a la planilla una fila tipo:'conexion' (paso: entrada,
+       recarga, navegacion o atras) con el perfil, el dispositivo y la página; al elegir perfil, una tipo:'perfil'
+       (con el anterior). Todo evento lleva 'visita' (id de la pestaña). Las últimas 300 quedan en mate.global.conexiones.
+     + MATE.acceso: qué perfiles se ven en este dispositivo (mate.global.acceso.ocultos) y si se pueden crear perfiles
+       nuevos (mate.global.acceso.nuevos). Un perfil oculto no entra ni por la URL: MATE.perfil() da null.
    v2.6  Tiempo de juego
      + MATE.tiempo: en cada actividad arma tramos de tal hora a tal hora (aprendizaje o libre), los manda a la planilla
        (tipo:'tramo') y los guarda por perfil con los totales. Se cortan con la pestaña oculta o sin tocar 3 minutos.
@@ -23,7 +29,7 @@
 */
 (function(){
 'use strict';
-const VERSION='2.6';
+const VERSION='2.7';
 const MATE=window.MATE=window.MATE||{};
 MATE.version=VERSION;
 MATE.perfiles=MATE.perfiles||[];
@@ -106,9 +112,20 @@ MATE.fondo={
 if(document.body) montaFondo(); else document.addEventListener('DOMContentLoaded',montaFondo);
 
 /* ==== PERFIL ==== */
-let perfilId=qs.get('p')||MATE.global.get('perfil',null);
-MATE.perfil=()=>MATE.perfiles.find(p=>p.id===perfilId)||null;
-MATE.setPerfil=id=>{ perfilId=id||null; if(id) MATE.global.set('perfil',id); else ls.del('mate.global.perfil'); MATE.log('perfil',id); };
+let perfilId=qs.get('p')||MATE.global.get('perfil',null), ultimoPerfil=perfilId;
+// Perfiles que se ven en este dispositivo (se eligen en Ajustes de padres); uno oculto no entra ni con ?p=.
+MATE.acceso={
+  ocultos:()=>MATE.global.get('acceso.ocultos',[])||[],
+  puede:id=>MATE.acceso.ocultos().indexOf(id)<0,
+  visibles:()=>MATE.perfiles.filter(p=>MATE.acceso.puede(p.id)),
+  ver(id,si){ const l=MATE.acceso.ocultos().filter(x=>x!==id); if(!si) l.push(id); MATE.global.set('acceso.ocultos',l); MATE.log('acceso',id,si?'visible':'oculto'); },
+  nuevos(v){ if(v===undefined) return MATE.global.get('acceso.nuevos',true)!==false; MATE.global.set('acceso.nuevos',!!v); }
+};
+MATE.perfil=()=>perfilId&&MATE.acceso.puede(perfilId)?MATE.perfiles.find(p=>p.id===perfilId)||null:null;
+MATE.setPerfil=id=>{
+  perfilId=id||null; if(id) MATE.global.set('perfil',id); else ls.del('mate.global.perfil'); MATE.log('perfil',id);
+  if(id&&MATE.conexion){ MATE.conexion.anotar('perfil',ultimoPerfil&&ultimoPerfil!==id?'cambio':'elige',{anterior:ultimoPerfil||''}); ultimoPerfil=id; }
+};
 // Perfiles creados en este dispositivo (los de la familia están en perfiles.js, que suma estos a MATE.perfiles).
 const COLORES=['#8b5cf6','#f97316','#16a34a','#e11d48','#0284c7','#ca8a04','#db2777','#0d9488'];
 MATE.perfilesNuevos={
@@ -171,7 +188,7 @@ MATE.nube={
   idEvento:e=>hash([MATE.dispositivo.id,e.perfil,e.act,e.ts,e.sesion||'',e.tipo||'',e.paso||'',e.intento||0,e.respuesta===undefined?'':String(e.respuesta)].join('|'))+e.ts.toString(36),
   enviar(e){
     const p=MATE.perfiles.find(x=>x.id===e.perfil)||{};
-    const r=Object.assign({},e,{id:e.id||MATE.nube.idEvento(e),perfilNombre:p.nombre||e.perfil,dispositivo:MATE.dispositivo.id,dispositivoNombre:MATE.dispositivo.nombre});
+    const r=Object.assign({visita:MATE.conexion&&MATE.conexion.visita},e,{id:e.id||MATE.nube.idEvento(e),perfilNombre:p.nombre||e.perfil,dispositivo:MATE.dispositivo.id,dispositivoNombre:MATE.dispositivo.nombre});
     const cola=MATE.global.get(COLA,[]); cola.push(r); if(cola.length>MAX_COLA) cola.splice(0,cola.length-MAX_COLA);
     guardaCola(cola); MATE.nube.agendar(3000);
   },
@@ -222,6 +239,32 @@ MATE.ejercicio=(act,ev)=>{ const p=MATE.perfil(); if(!p) return null; const e=Ob
 window.addEventListener('online',()=>MATE.nube.agendar(1000));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&MATE.nube.pendientes()) MATE.nube.vaciar(); });
 if(MATE.nube.url()) setTimeout(()=>{ MATE.nube.subirHistorial(); MATE.nube.vaciar(); },2500);
+
+/* ==== CONEXIONES: quién entra, desde qué dispositivo y cuándo ==== */
+// Una fila tipo:'conexion' por cada página que se abre (paso: entrada = pestaña o app nueva, recarga, navegacion, atras)
+// y una tipo:'perfil' al elegir perfil (paso: elige o cambio, con 'anterior'). Junto con los ejercicios (que ya llevan
+// perfil y dispositivo) sirven para calcular cuánto tiempo estuvo cada dispositivo (Ajustes de padres > Registro).
+// act: la actividad de la página o 'menu'. 'visita' es el id de la pestaña (sessionStorage): sobrevive a las recargas.
+const actPagina=()=>{ const ruta=decodeURI(location.pathname), a=MATE.actividades.find(x=>{ const r=x.ruta.replace(/index\.html$/,''); return ruta.endsWith(x.ruta)||ruta.endsWith(r); }); return a||null; };
+MATE.conexion=(()=>{
+  let visita=null, nueva=false;
+  try{ visita=sessionStorage.getItem('mate.visita'); }catch(e){}
+  if(!visita){ nueva=true; visita='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); try{ sessionStorage.setItem('mate.visita',visita); }catch(e){} }
+  let nav=''; try{ const n=performance.getEntriesByType('navigation')[0]; nav=n?n.type:''; }catch(e){}
+  const motivo=nueva?'entrada':nav==='reload'?'recarga':nav==='back_forward'?'atras':'navegacion';
+  const C={ visita, motivo,
+    lista:()=>MATE.global.get('conexiones',[])||[],
+    anotar(tipo,mot,extra){
+      const p=MATE.perfil(), a=actPagina(), e=Object.assign({tipo,paso:mot,act:a?a.id:'menu',perfil:p?p.id:'',ts:Date.now(),pagina:decodeURI(location.pathname).split('/').slice(-2).join('/'),v:VERSION},extra);
+      MATE.nube.enviar(e);
+      const l=C.lista(); l.push({ts:e.ts,tipo,paso:mot,perfil:e.perfil,act:e.act}); MATE.global.set('conexiones',l.slice(-300));
+      MATE.log('conexion',tipo,mot,e.perfil||'(sin perfil)',e.act);
+    }
+  };
+  const arrancar=()=>C.anotar('conexion',motivo);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arrancar); else setTimeout(arrancar,0);
+  return C;
+})();
 
 /* ==== PANTALLA COMPLETA ==== */
 MATE.pantalla=(()=>{
@@ -312,8 +355,7 @@ MATE.tiempo=(()=>{
     }
   };
   const arrancar=()=>{
-    const ruta=decodeURI(location.pathname), a=MATE.actividades.find(x=>{ const r=x.ruta.replace(/index\.html$/,''); return ruta.endsWith(x.ruta)||ruta.endsWith(r); });
-    if(!a) return; act=a.id;
+    const a=actPagina(); if(!a) return; act=a.id;
     setInterval(T.vigilar,5000); T.vigilar();
     document.addEventListener('pointerdown',()=>{ ult=Date.now(); T.vigilar(); },true);
     document.addEventListener('keydown',()=>{ ult=Date.now(); },true);

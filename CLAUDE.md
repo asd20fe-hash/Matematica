@@ -16,7 +16,7 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 ## Estructura
 
 ```
-index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN, "Reiniciar progreso" y "⏱️ Tiempo de juego" (v2.9)
+index.html              shell: perfiles (y "➕ Nuevo perfil"), menú, ajustes de padres con PIN, "Reiniciar progreso" y "⏱️ Tiempo de juego" y "📱 Este dispositivo" (v3.0)
 sw.js                   modo sin conexión: guarda toda la app (ARCHIVOS), three.js y las fuentes; core.js lo registra con http/https
 manifest.webmanifest    instalación como app en pantalla completa (íconos en core/iconos/; el shell lo enlaza solo con http/https)
 perfiles.js             MATE.perfiles = [{id,nombre,grado,avatar,color}] + los creados en el dispositivo
@@ -33,7 +33,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 ## Reglas
 
 - **Sin compilar:** sin bundlers, npm ni build. Varios archivos, scripts clásicos (sin ES modules ni `fetch` local, porque no funcionan en `file://`), todo colgado de `MATE`.
-- **Versiones:** el shell tiene la suya (v2.9) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
+- **Versiones:** el shell tiene la suya (v3.0) y cada actividad la suya. Cada cambio sube la versión, agrega una entrada al historial del comentario del principio del archivo (`vX.Y  descripción`, viñetas con `+`) y actualiza la línea `Versión:`. Se muestra en pantalla en elementos `.ver`. Si cambia una actividad, actualizar `version` en el registro.
 - **Modo claro/oscuro:** tokens CSS en `:root` con overrides por `[data-theme]` (media query y atributo). Todo color o elemento nuevo tiene que verse bien en los dos modos.
 - **Textos en español rioplatense con voseo** ("Elegí", "Probá"); comentarios y logs también en español. Cada actividad decide su tono y tipografía: la de Luz usa frases cortas y MAYÚSCULAS de imprenta; eso no es regla del shell.
 - Estilo compacto: nombres cortos, varias sentencias por línea, sin frameworks.
@@ -46,6 +46,8 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - `MATE.perfil()` (activo o null), `MATE.setPerfil(id)`, `MATE.perfiles`, `MATE.actividades`.
 - `MATE.perfilesNuevos.lista/crear(nombre,avatar,grado)/borrar(id)`: perfiles creados en el dispositivo (`mate.global.perfiles`, id `nombre-xxxx` para que no se mezclen). `MATE.puedeVer(actividad, perfil)`: por `grados` (o por ids en `perfiles`, lo viejo).
 - `MATE.dispositivo` `{id, nombre, renombrar(n)}` en `mate.global.dispositivo`.
+- `MATE.acceso` `{ocultos(), puede(id), visibles(), ver(id, si), nuevos(v?)}`: qué perfiles se ven en **este** dispositivo (`mate.global.acceso.ocultos`) y si aparece "➕ Nuevo perfil" (`mate.global.acceso.nuevos`). Se elige en Ajustes de padres > 📱 Este dispositivo. Un perfil oculto no entra ni con `?p=` (`MATE.perfil()` da null).
+- `MATE.conexion` `{visita, motivo, lista(), anotar(tipo, paso, extra)}`: al abrir cualquier página manda a la planilla `tipo:'conexion'` (`paso`: `entrada`, `recarga`, `navegacion`, `atras`; `act` = actividad o `menu`) y `MATE.setPerfil(id)` manda `tipo:'perfil'` (`paso`: `elige`/`cambio`, con `anterior`). Todo evento lleva `visita` (id de la pestaña, en sessionStorage). Las últimas 300 quedan en `mate.global.conexiones`. El panel de la nube arma con eso "Tiempo por dispositivo" (visitas cortadas con 15 min sin eventos).
 - `MATE.ejercicio(act, ev)`: registra un intento del perfil activo y lo encola para la nube. `MATE.nube`: `enviar(e)` (cola en `mate.global.nube.cola`, lotes de 300, reintenta sin internet), `vaciar()`, `leer(clave)`, `subirHistorial()`, `pendientes()`, `estado()`. La URL del Apps Script va en `NUBE_URL` (core.js) o en `mate.global.nube.url`; cada evento lleva un `id` estable y la planilla descarta los repetidos.
 - `MATE.irMenu()` y `MATE.abrir(id)`: navegan conservando `?p=&t=&f=`. `MATE.raiz`: URL de la raíz del proyecto.
 - `MATE.log(tag, ...)`, `MATE.ver(el)`.
