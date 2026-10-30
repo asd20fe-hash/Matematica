@@ -21,7 +21,13 @@ Si después cambiás el script, usá **Implementar → Administrar implementacio
 
 - Hoja `eventos`: `fecha`, `perfil`, `dispositivo`, `act` (actividad), `tema`, `paso`, `intento`, `ok`, `error` (código), `esperado`, `respuesta`, `ms` (tiempo), `ayuda`, `item` (el ejercicio) y `extra` (lo demás, en JSON).
 - Entradas: cada vez que un dispositivo abre una página va una fila `tipo` = `conexion` (`paso`: entrada, recarga, navegacion o atras) y cada vez que se elige o cambia de perfil, una `tipo` = `perfil` (`paso`: elige o cambio; el perfil anterior va en `extra`). Con eso y los ejercicios, Ajustes de padres muestra "Tiempo por dispositivo".
-- Hoja `perfiles` y `dispositivos`: nombres para mostrar.
+- Hoja `perfiles`: nombres para mostrar. Hoja `dispositivos`: `nombre` (el que se pone en el dispositivo), `acceso` (qué perfiles ve hoy), `nota` (tu nombre o descripción, solo para vos: también sale en `eventos` como `dispositivoNota`) y `permitidos` (qué perfiles de la familia puede usar; vacía = sin configurar).
+
+## Permisos de los dispositivos
+
+Un dispositivo nuevo no ve a Luz ni a Ian: solo puede crear su propio perfil (eligiendo los ejercicios de 1ro o de 4to). Para habilitarlo, desde tu computadora: **Ajustes de padres → Registro en la nube → clave → Cargar registro → 📱 Dispositivos**. Buscá el dispositivo (el código está en sus Ajustes de padres → 📱 Este dispositivo), escribile una nota, marcá los perfiles y **Guardar**. El dispositivo lo toma la próxima vez que abre la página.
+
+Los dispositivos que ya usaban un perfil antes de esto lo siguen viendo mientras no los configures. Después de actualizar `planilla.gs` hay que volver a implementarlo (Administrar implementaciones → editar → Versión: nueva).
 - Los nombres de los errores para padres están en el código (registro.js y los paneles de 4to); el panel los muestra traducidos.
 
 ## Seguridad

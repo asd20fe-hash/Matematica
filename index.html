@@ -3,9 +3,14 @@
 <!--
   ============================================================
   Matemática — shell: perfiles, menú de actividades y ajustes de padres
-  Versión: v3.0 (2026-10-29)
+  Versión: v3.1 (2026-10-30)
   ------------------------------------------------------------
   Historial de cambios
+  v3.1  Perfiles de la familia solo con permiso
+    + Un dispositivo nuevo no ve a Luz ni a Ian: solo "➕ Nuevo perfil" (con qué ejercicios quiere: los de 1ro o los de
+      4to) y los perfiles que creó. Los de la familia los habilita el administrador desde su panel (core.js v2.8).
+    + "📱 Este dispositivo" ya no deja elegir perfiles desde el propio dispositivo: muestra cuáles habilitó el
+      administrador, el código del dispositivo y las últimas entradas. Si cambian los permisos, la pantalla se rearma.
   v3.0  Perfiles por dispositivo y entradas
     + Ajustes de padres suma "📱 Este dispositivo": qué perfiles aparecen en la pantalla de inicio de este dispositivo,
       si se puede crear un perfil nuevo y las últimas entradas (abrir, recargar, elegir o cambiar de perfil) con
@@ -137,7 +142,7 @@ input{font:inherit;color:var(--text);background:var(--box-bg);border:2px solid v
 'use strict';
 const $=s=>document.querySelector(s), view=$('#view');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-document.querySelectorAll('.ver').forEach(el=>el.textContent='v3.0');
+document.querySelectorAll('.ver').forEach(el=>el.textContent='v3.1');
 
 /* ==== SIN CONEXIÓN ==== */
 function pintaOffline(){ const e=MATE.offline.estado(); $('#offline').textContent=!e.enLinea?'· 📴 Sin internet: funciona igual':(e.listo?'· ✈️ Lista para usar sin internet':''); }
@@ -159,21 +164,27 @@ pintaTema();
 $('#fondoBtn').onclick=()=>MATE.fondo.menu($('#fondoBtn'));
 
 /* ==== PERFILES ==== */
+// v3.1: si el administrador cambia los permisos de este dispositivo, se rearma la pantalla de perfiles (o se sale del
+// menú de un perfil que ya no puede usar); en Ajustes de padres solo se repinta "Este dispositivo".
+let enPerfiles=false;
+document.addEventListener('mate-acceso',()=>{ if($('#acceso')) pintaAcceso(); else if(enPerfiles||(!MATE.perfil()&&!$('.nuevo-form')&&!$('#pin'))) verPerfiles(); });
 function verPerfiles(){
   MATE.setPerfil(null);
-  view.innerHTML='<p class="sub">¿Quién va a jugar?</p><div class="grid">'+MATE.acceso.visibles().map(p=>
+  enPerfiles=true; const vis=MATE.acceso.visibles();
+  view.innerHTML='<p class="sub">'+(vis.length?'¿Quién va a jugar?':'¡Hola! Creá tu perfil para empezar.')+'</p><div class="grid">'+vis.map(p=>
     '<button class="card" data-p="'+esc(p.id)+'" style="--c:'+esc(p.color)+'"><span class="big">'+esc(p.avatar)+'</span><b>'+esc(p.nombre)+'</b><small>'+esc(p.grado)+' grado</small></button>').join('')+
-    (MATE.acceso.nuevos()?'<button class="card nuevo" id="nuevoP"><span class="big">➕</span><b>Nuevo perfil</b><small>Para un amigo o alguien más</small></button>':'')+'</div>';
+    '<button class="card nuevo" id="nuevoP"><span class="big">➕</span><b>Nuevo perfil</b><small>'+(vis.length?'Para un amigo o alguien más':'Elegí tu nombre y tus ejercicios')+'</small></button></div>';
   view.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ MATE.setPerfil(b.dataset.p); verMenu(); });
-  if($('#nuevoP')) $('#nuevoP').onclick=verNuevo;
+  $('#nuevoP').onclick=verNuevo;
 }
 // Crear un perfil: nombre, ícono y grado (los grados que tienen actividades).
 function verNuevo(){
+  enPerfiles=false;
   const grados=[...new Set(MATE.actividades.flatMap(a=>a.grados||[]))].sort(), av=MATE.perfilesNuevos.avatares;
   const st={avatar:av[0],grado:grados[0]};
   view.innerHTML='<div class="panel nuevo-form"><h2>➕ Nuevo perfil</h2><b>¿Cómo te llamás?</b><input id="np-nombre" maxlength="20" autocomplete="off" placeholder="Tu nombre">'+
     '<b>Elegí tu ícono</b><div class="avatares" id="np-av">'+av.map(a=>'<button data-a="'+a+'" class="'+(a===st.avatar?'on':'')+'" aria-label="'+a+'">'+a+'</button>').join('')+'</div>'+
-    '<b>¿En qué grado estás?</b><div class="grados" id="np-gr">'+grados.map(g=>'<button data-g="'+esc(g)+'" class="'+(g===st.grado?'on':'')+'">'+esc(g)+' grado</button>').join('')+'</div>'+
+    '<b>¿Qué ejercicios querés?</b><div class="grados" id="np-gr">'+grados.map(g=>'<button data-g="'+esc(g)+'" class="'+(g===st.grado?'on':'')+'">'+esc(g)+' grado <small>'+MATE.actividades.filter(a=>(a.grados||[]).indexOf(g)>=0).map(a=>esc(a.icono)).join('')+'</small></button>').join('')+'</div>'+
     '<div class="msg bad" id="np-m"></div><div class="row"><button class="btn" id="np-no">Volver</button><button class="btn main" id="np-ok">Crear</button></div></div>';
   const marca=(cont,attr,v)=>cont.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset[attr]===v));
   $('#np-av').onclick=e=>{ const b=e.target.closest('[data-a]'); if(b){ st.avatar=b.dataset.a; marca($('#np-av'),'a',st.avatar); } };
@@ -191,7 +202,7 @@ function verNuevo(){
 
 /* ==== MENÚ ==== */
 function verMenu(){
-  const p=MATE.perfil(); if(!p) return verPerfiles();
+  enPerfiles=false; const p=MATE.perfil(); if(!p) return verPerfiles();
   const acts=MATE.actividades.filter(a=>MATE.puedeVer(a,p));
   view.innerHTML='<p class="sub">¡Hola, '+esc(p.nombre)+'! '+esc(p.avatar)+' Elegí qué querés hacer.</p><div class="grid">'+
     (acts.length?acts.map(a=>'<button class="card" data-a="'+esc(a.id)+'" style="--c:'+esc(p.color)+'"><span class="big">'+esc(a.icono)+'</span><b>'+esc(a.titulo)+'</b><small>'+esc(a.descripcion)+'</small></button>').join(''):'<p class="sub">Todavía no hay actividades para vos.</p>')+
@@ -203,6 +214,7 @@ function verMenu(){
 /* ==== AJUSTES DE PADRES ==== */
 const volver=()=>MATE.perfil()?verMenu():verPerfiles();
 function verPin(){
+  enPerfiles=false;
   view.innerHTML='<div class="panel"><h2>🔒 Ajustes de padres</h2><p class="sub" style="margin-bottom:8px">Ingresá el PIN.</p>'+
     '<input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"><div class="msg bad" id="m"></div>'+
     '<div class="row"><button class="btn" id="no">Volver</button><button class="btn main" id="ok">Entrar</button></div></div>';
@@ -228,21 +240,18 @@ function verAjustes(){
   $('#gp').onclick=()=>{ const v=$('#np').value, m=$('#m'); if(!/^\d{4,8}$/.test(v)){ m.className='msg bad'; m.textContent='Usá de 4 a 8 números.'; return; } MATE.pin.set(v); $('#np').value=''; m.className='msg ok'; m.textContent='PIN guardado'; };
   $('#sal').onclick=volver;
 }
-// v3.0: qué perfiles se ven en este dispositivo (MATE.acceso) y sus últimas entradas (MATE.conexion).
+// v3.1: perfiles de la familia que habilitó el administrador (MATE.acceso, solo lectura) y últimas entradas (MATE.conexion).
 function pintaAcceso(){
   const c=$('#acceso'), nom=id=>{ const p=MATE.perfiles.find(x=>x.id===id); return p?p.avatar+' '+p.nombre:(id||'sin perfil'); }, act=id=>{ const a=MATE.actividades.find(x=>x.id===id); return a?a.icono+' '+a.titulo:'🏠 Menú'; };
   const QUE={entrada:'📲 Entró',recarga:'🔄 Recargó',navegacion:'➡️ Abrió',atras:'↩️ Volvió a',elige:'👤 Eligió perfil',cambio:'🔀 Cambió de perfil'};
-  const ult=MATE.conexion.lista().slice(-15).reverse();
-  c.innerHTML='<h2>📱 Este dispositivo</h2><p class="sub" style="margin:0 0 8px">'+esc(MATE.dispositivo.nombre)+'. Elegí qué perfiles aparecen al empezar (solo en este dispositivo).</p>'+
-    MATE.perfiles.map(p=>'<label class="fr4-switch"><input type="checkbox" data-ac="'+esc(p.id)+'"'+(MATE.acceso.puede(p.id)?' checked':'')+'> '+esc(p.avatar)+' '+esc(p.nombre)+' <small>· '+esc(p.grado)+' grado</small></label>').join('')+
-    '<label class="fr4-switch"><input type="checkbox" id="ac-nuevo"'+(MATE.acceso.nuevos()?' checked':'')+'> ➕ Se puede crear un perfil nuevo</label><div class="msg bad" id="ac-m"></div>'+
-    '<b>Últimas entradas</b>'+(ult.length?'<ul class="tramos">'+ult.map(x=>'<li>'+new Date(x.ts).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})+' · '+(QUE[x.paso]||esc(x.paso))+(x.tipo==='perfil'?'':' '+esc(act(x.act)))+' · '+esc(nom(x.perfil))+'</li>').join('')+'</ul>':'<p class="sub" style="margin:0">Todavía no hay.</p>')+
-    '<p class="sub" style="margin:6px 0 0">Cada entrada también va a la planilla; en "Registro en la nube" se ve cuánto tiempo estuvo cada dispositivo.</p>';
-  c.querySelectorAll('[data-ac]').forEach(i=>i.onchange=()=>{
-    if(!i.checked&&MATE.acceso.visibles().length<=1){ i.checked=true; $('#ac-m').textContent='Tiene que quedar al menos un perfil.'; return; }
-    $('#ac-m').textContent=''; MATE.acceso.ver(i.dataset.ac,i.checked);
-  });
-  $('#ac-nuevo').onchange=e=>MATE.acceso.nuevos(e.target.checked);
+  const ult=MATE.conexion.lista().slice(-15).reverse(), est=MATE.acceso.estado(), fam=MATE.perfiles.filter(p=>!p.nuevo&&MATE.acceso.puede(p.id));
+  c.innerHTML='<h2>📱 Este dispositivo</h2><p style="margin:0 0 6px">'+esc(MATE.dispositivo.nombre)+' · código <b>'+esc(MATE.dispositivo.id)+'</b></p>'+
+    '<p style="margin:0 0 6px">Perfiles de la familia: '+(fam.length?fam.map(p=>esc(p.avatar+' '+p.nombre)).join(', '):'<b>ninguno</b>')+
+    ' <small>('+(est.configurado?'habilitados por el administrador':'sin configurar todavía')+(est.ts?', consultado '+new Date(est.ts).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}):'')+')</small></p>'+
+    '<p class="sub" style="margin:0 0 8px">Los habilita el administrador desde su panel (Registro en la nube → Dispositivos), buscando este código.</p>'+
+    '<div class="row" style="justify-content:flex-start"><button class="btn" id="ac-ya">🔄 Consultar permisos</button></div><div class="msg" id="ac-m"></div>'+
+    '<b>Últimas entradas</b>'+(ult.length?'<ul class="tramos">'+ult.map(x=>'<li>'+new Date(x.ts).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})+' · '+(QUE[x.paso]||esc(x.paso))+(x.tipo==='perfil'?'':' '+esc(act(x.act)))+' · '+esc(nom(x.perfil))+'</li>').join('')+'</ul>':'<p class="sub" style="margin:0">Todavía no hay.</p>');
+  $('#ac-ya').onclick=async()=>{ const m=$('#ac-m'); m.className='msg'; m.textContent='Consultando…'; const ok=await MATE.acceso.actualizar(true); if(!$('#acceso')) return; pintaAcceso(); const m2=$('#ac-m'); m2.className='msg '+(ok?'ok':'bad'); m2.textContent=ok?'Listo.':'No se pudo consultar (¿sin internet o sin planilla?).'; };
 }
 // Tiempo de juego por perfil (MATE.tiempo): hoy con cada tramo, la semana y el total.
 function pintaTiempo(){
@@ -271,7 +280,7 @@ function pintaNuevos(){
 }
 // Reiniciar progreso: borra mate.<perfil>.<actividad>.* de este dispositivo (la planilla no se toca).
 function pintaReset(){
-  const c=$('#preset'), ps=MATE.perfiles;
+  const c=$('#preset'), ps=MATE.acceso.visibles();
   c.innerHTML='<h2>Reiniciar progreso</h2><p class="sub" style="margin:0 0 8px">Borra lo guardado en este dispositivo: niveles, repaso, monedas, la mascota… Lo que ya se mandó a la planilla queda.</p>'+
     '<div class="row" style="justify-content:flex-start;flex-wrap:wrap"><select id="rp">'+ps.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.avatar+' '+p.nombre)+'</option>').join('')+'</select><select id="ra"></select></div>'+
     '<div class="msg" id="rm"></div><div class="row"><button class="btn" id="rb">🗑 Reiniciar</button></div>';
@@ -293,6 +302,7 @@ $('#lockBtn').onclick=verPin;
 
 /* ==== INICIO ==== */
 MATE.perfil()?verMenu():verPerfiles();
+MATE.acceso.actualizar(true);   // v3.1: en la pantalla de inicio los permisos se consultan siempre
 MATE.log('shell','listo');
 })();
 </script>

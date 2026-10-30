@@ -1,4 +1,8 @@
-/* Matemática — panel "Registro en la nube" de Ajustes de padres (solo lo carga el shell). Versión 1.1 (2026-10-29).
+/* Matemática — panel "Registro en la nube" de Ajustes de padres (solo lo carga el shell). Versión 1.2 (2026-10-30).
+   v1.2 + "Dispositivos" (panel del administrador, con la clave): cada dispositivo con su nota (nombre o descripción que
+          solo ve el administrador: va a la planilla, nunca al dispositivo), código, primera y última vez, entradas,
+          ejercicios, qué perfiles usó (desde y hasta cuándo) y qué perfiles de la familia puede usar (se guarda en la
+          planilla con MATE.nube.permisos; el dispositivo lo consulta solo). En las tablas, el dispositivo se ve con su nota.
    v1.1 + "Tiempo por dispositivo": arma las visitas con las entradas (tipo:'conexion' y 'perfil' de core.js v2.7), los
           ejercicios y los tramos; una visita se corta con 15 minutos sin nada. Desde, hasta, duración, perfiles y entradas.
    - Este dispositivo: nombre, envíos pendientes, dirección de la planilla, enviar ahora y subir el historial.
@@ -83,17 +87,54 @@ function render(cont){
     '<label class="nube-campo">Dirección de la planilla (solo si no está en el código) <input id="nb-url" value="'+esc(url||'')+'" placeholder="https://script.google.com/macros/s/…/exec"></label>'+
     '<div class="row"><button class="btn" id="nb-guardar">Guardar</button><button class="btn" id="nb-enviar">Enviar ahora</button><button class="btn" id="nb-hist">Subir historial de este dispositivo</button></div><div class="msg" id="nb-msg"></div></details>'+
     '<div class="nube-clave"><label class="nube-campo">Clave de lectura <input id="nb-clave" type="password" value="'+esc(MATE.global.get('nube.clave',''))+'" autocomplete="off"></label>'+
-    '<button class="btn main" id="nb-cargar">Cargar registro</button></div><div class="msg" id="nb-msg2"></div><div id="nb-reg"></div>';
+    '<button class="btn main" id="nb-cargar">Cargar registro</button></div><div class="msg" id="nb-msg2"></div><div id="nb-disp"></div><div id="nb-reg"></div>';
   const $=s=>cont.querySelector(s), msg=(t,ok,id)=>{ const m=$(id||'#nb-msg'); m.className='msg '+(ok?'ok':'bad'); m.textContent=t; };
   $('#nb-guardar').onclick=()=>{ MATE.dispositivo.renombrar($('#nb-nombre').value); const u=$('#nb-url').value.trim(); if(u) MATE.global.set('nube.url',u); else localStorage.removeItem('mate.global.nube.url'); msg('Guardado.',true); };
   $('#nb-enviar').onclick=async()=>{ if(!MATE.nube.url()) return msg('Falta la dirección de la planilla.'); msg('Enviando…',true); const ok=await MATE.nube.vaciar(); ok?msg('Listo: no queda nada pendiente.',true):msg('No se pudo enviar: '+(MATE.nube.estado().ultimoError||'')); };
   $('#nb-hist').onclick=()=>{ const n=MATE.nube.subirHistorial(true); msg(n?n+' ejercicios viejos en la cola para enviar.':'No hay ejercicios viejos nuevos para subir.',true); };
   $('#nb-cargar').onclick=async()=>{
     const c=$('#nb-clave').value.trim(); MATE.global.set('nube.clave',c); msg('Cargando…',true,'#nb-msg2');
-    try{ datos=await MATE.nube.leer(c); datos.eventos.forEach(e=>{ const x=objeto(e.extra); Object.keys(x).forEach(k=>{ if(e[k]===undefined||e[k]==='') e[k]=x[k]; }); e.ts=+e.ts; e.okB=e.ok===true||e.ok==='true'; e.intento=+e.intento||0; }); msg(datos.eventos.length+' registros.',true,'#nb-msg2'); cuantos=100; pintar($('#nb-reg')); }
+    try{ datos=await MATE.nube.leer(c); datos.eventos.forEach(e=>{ const x=objeto(e.extra); Object.keys(x).forEach(k=>{ if(e[k]===undefined||e[k]==='') e[k]=x[k]; }); e.ts=+e.ts; e.okB=e.ok===true||e.ok==='true'; e.intento=+e.intento||0; }); msg(datos.eventos.length+' registros.',true,'#nb-msg2'); cuantos=100; pintaDisp($('#nb-disp'),c); pintar($('#nb-reg')); }
     catch(err){ msg(String(err.message||err),false,'#nb-msg2'); }
   };
-  if(datos) pintar($('#nb-reg'));
+  if(datos){ pintaDisp($('#nb-disp'),MATE.global.get('nube.clave','')); pintar($('#nb-reg')); }
+}
+
+/* ==== DISPOSITIVOS (administrador) ==== */
+const lista=v=>{ if(Array.isArray(v)) return v; try{ const x=JSON.parse(v); return Array.isArray(x)?x:[]; }catch(e){ return []; } };
+const nomD=id=>{ const d=datos&&datos.dispositivos.find(x=>x.id===id); return d?(d.nota?d.nota+' · '+(d.nombre||id):(d.nombre||id)):id; };
+const nomP=id=>{ const p=(datos&&datos.perfiles.find(x=>x.id===id))||MATE.perfiles.find(x=>x.id===id); return p?(p.avatar?p.avatar+' ':'')+p.nombre:id; };
+function pintaDisp(el,clave){
+  const por={}, fam=MATE.perfiles.filter(p=>!p.nuevo), nuevo=id=>({id,nombre:'',perfiles:{},entradas:0,ejercicios:0,primero:0,ultimo:0});
+  datos.eventos.forEach(e=>{
+    if(!e.dispositivo||!e.ts) return; const d=por[e.dispositivo]||(por[e.dispositivo]=nuevo(e.dispositivo));
+    if(!d.primero||e.ts<d.primero) d.primero=e.ts; if(e.ts>=d.ultimo){ d.ultimo=e.ts; if(e.dispositivoNombre) d.nombre=e.dispositivoNombre; }
+    if(e.perfil){ const p=d.perfiles[e.perfil]||(d.perfiles[e.perfil]={desde:e.ts,hasta:e.ts,n:0}); p.desde=Math.min(p.desde,e.ts); p.hasta=Math.max(p.hasta,e.ts); p.n++; }
+    if(e.tipo==='conexion'&&e.paso==='entrada') d.entradas++; else if(e.tipo==='paso'&&e.intento>=1) d.ejercicios++;
+  });
+  datos.dispositivos.forEach(x=>{ const d=por[x.id]||(por[x.id]=nuevo(x.id)); d.nombre=x.nombre||d.nombre; d.nota=x.nota||''; d.conf=String(x.permitidos||'')!==''; d.permitidos=lista(x.permitidos); d.acceso=lista(x.acceso); });
+  const ds=Object.values(por).sort((a,b)=>b.ultimo-a.ultimo);
+  el.innerHTML='<h3>📱 Dispositivos ('+ds.length+')</h3><p><small>La nota es solo tuya: se guarda en la planilla (hojas dispositivos y eventos) y nunca se ve en el dispositivo. Los perfiles de la familia que marques son los únicos que ese dispositivo puede usar; los que crea él mismo los ve siempre.</small></p>'+
+    ds.map(d=>{
+      const ps=Object.keys(d.perfiles).sort((a,b)=>d.perfiles[b].hasta-d.perfiles[a].hasta), marcados=d.conf?d.permitidos:d.acceso;
+      return '<details class="ref4-act" data-d="'+esc(d.id)+'"><summary><b>'+esc(d.nota||d.nombre||d.id)+'</b>&nbsp;'+(d.nota?'<small>('+esc(d.nombre)+')</small>&nbsp;':'')+(d.id===MATE.dispositivo.id?'<small>· este</small>&nbsp;':'')+'<small>· '+fecha(d.ultimo)+' · '+(ps.map(p=>esc(nomP(p).split(' ')[0])).join('')||'sin perfiles')+'</small></summary>'+
+        '<p><small>Código <b>'+esc(d.id)+'</b> · nombre en el dispositivo: '+esc(d.nombre||'—')+' · primera vez '+fecha(d.primero)+' · última '+fecha(d.ultimo)+' · '+d.entradas+' entradas · '+d.ejercicios+' ejercicios</small></p>'+
+        '<label class="nube-campo">Nota (solo la ves vos) <input data-nota maxlength="200" value="'+esc(d.nota)+'" placeholder="Ej.: teléfono de la abuela"></label>'+
+        (ps.length?'<div class="nube-scroll"><table class="fr4-mapa nube-err"><thead><tr><th>Perfil</th><th>Desde</th><th>Hasta</th><th>Registros</th></tr></thead><tbody>'+ps.map(p=>'<tr><td>'+esc(nomP(p))+'</td><td>'+fecha(d.perfiles[p].desde)+'</td><td>'+fecha(d.perfiles[p].hasta)+'</td><td>'+d.perfiles[p].n+'</td></tr>').join('')+'</tbody></table></div>':'<p><small>Todavía no usó ningún perfil.</small></p>')+
+        '<p style="margin:8px 0 0"><b>Puede usar</b> <small>('+(d.conf?'configurado por vos':'sin configurar: ve lo que ya tenía')+')</small></p>'+
+        fam.map(p=>'<label class="fr4-switch"><input type="checkbox" data-perm="'+esc(p.id)+'"'+(marcados.indexOf(p.id)>=0?' checked':'')+'> '+esc(p.avatar+' '+p.nombre)+'</label>').join('')+
+        '<div class="row" style="justify-content:flex-start"><button class="btn main" data-guardar>Guardar</button></div><div class="msg" data-msg></div></details>';
+    }).join('');
+  el.querySelectorAll('[data-guardar]').forEach(b=>b.onclick=async()=>{
+    const box=b.closest('[data-d]'), id=box.dataset.d, m=box.querySelector('[data-msg]'), nota=box.querySelector('[data-nota]').value.trim();
+    const perm=[...box.querySelectorAll('[data-perm]')].filter(i=>i.checked).map(i=>i.dataset.perm);
+    m.className='msg'; m.textContent='Guardando…';
+    try{
+      await MATE.nube.permisos(clave,id,perm,nota);
+      let x=datos.dispositivos.find(o=>o.id===id); if(!x) datos.dispositivos.push(x={id}); x.nota=nota; x.permitidos=JSON.stringify(perm);
+      m.className='msg ok'; m.textContent='Guardado. El dispositivo lo toma la próxima vez que abra la página.';
+    }catch(err){ m.className='msg bad'; m.textContent=String(err.message||err); }
+  });
 }
 
 function filtrados(){
@@ -101,8 +142,6 @@ function filtrados(){
   return datos.eventos.filter(e=>e.ts>=desde&&(!filtro.perfil||e.perfil===filtro.perfil)&&(!filtro.disp||e.dispositivo===filtro.disp)&&(!filtro.act||e.act===filtro.act));
 }
 function pintar(el){
-  const nomP=id=>{ const p=datos.perfiles.find(x=>x.id===id)||MATE.perfiles.find(x=>x.id===id); return p?(p.avatar?p.avatar+' ':'')+p.nombre:id; };
-  const nomD=id=>{ const d=datos.dispositivos.find(x=>x.id===id); return d?d.nombre:id; };
   const uniq=k=>[...new Set(datos.eventos.map(e=>e[k]).filter(Boolean))];
   const sel=(id,val,ops)=>'<select id="'+id+'">'+ops.map(o=>'<option value="'+esc(o[0])+'"'+(o[0]===val?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>';
   const evs=filtrados(), pasos=evs.filter(e=>e.tipo==='paso'&&e.intento>=1), errs=pasos.filter(e=>!e.okB).sort((a,b)=>b.ts-a.ts);
@@ -134,11 +173,11 @@ function pintar(el){
   const q=s=>el.querySelector(s);
   [['f-perfil','perfil'],['f-disp','disp'],['f-act','act'],['f-dias','dias']].forEach(([id,k])=>q('#'+id).onchange=e=>{ filtro[k]=e.target.value; cuantos=100; pintar(el); });
   const m=q('#f-mas'); if(m) m.onclick=()=>{ cuantos+=200; pintar(el); };
-  q('#f-csv').onclick=()=>bajar(csv(evs.map(e=>Object.assign({},e,{perfilNombre:nomP(e.perfil),dispositivoNombre:nomD(e.dispositivo),actividad:tituloAct(e.act),errorNombre:e.error?nombreError(e.act,e.error):''}))),'text/csv','csv');
+  q('#f-csv').onclick=()=>bajar(csv(evs.map(e=>Object.assign({},e,{perfilNombre:nomP(e.perfil),dispositivoNombre:nomD(e.dispositivo),dispositivoNota:((datos.dispositivos.find(x=>x.id===e.dispositivo)||{}).nota||''),actividad:tituloAct(e.act),errorNombre:e.error?nombreError(e.act,e.error):''}))),'text/csv','csv');
   q('#f-json').onclick=()=>bajar(JSON.stringify(evs,null,1),'application/json','json');
 }
 function csv(lista){
-  const cols=['fecha','perfilNombre','dispositivoNombre','actividad','tema','paso','intento','ok','error','errorNombre','esperado','respuesta','ms','ayuda','item','nivel','tipo','id'];
+  const cols=['fecha','perfilNombre','dispositivoNombre','dispositivoNota','actividad','tema','paso','intento','ok','error','errorNombre','esperado','respuesta','ms','ayuda','item','nivel','tipo','id'];
   const c=v=>{ const s=String(v===undefined||v===null?'':v); return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
   return '﻿'+cols.join(';')+'\n'+lista.map(e=>cols.map(k=>c(k==='item'?item(e.item):e[k])).join(';')).join('\n');
 }

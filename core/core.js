@@ -1,5 +1,14 @@
 /* Matemática — núcleo compartido. Único global: MATE. Script clásico (sin módulos).
    Historial de cambios
+   v2.8  Perfiles de la familia solo con permiso del administrador
+     + MATE.acceso cambia: los perfiles de perfiles.js (Luz, Ian) se ven solo si el administrador habilitó este
+       dispositivo desde su panel (hoja "dispositivos" de la planilla, columna permitidos). Un dispositivo nuevo
+       solo ve "➕ Nuevo perfil" y los perfiles que creó. Los permisos se piden a la planilla al abrir cada página
+       (en las actividades, como mucho cada minuto; el shell siempre) y quedan en mate.global.acceso; si cambian, avisa con el evento 'mate-acceso'.
+     + Los dispositivos que ya tenían datos de un perfil lo siguen viendo hasta que el administrador los configure.
+     + MATE.nube.permisos(clave, dispositivo, permitidos, nota): lo usa el panel del administrador.
+     + Cada envío manda también qué perfiles ve el dispositivo (columna acceso).
+     - Sale lo de v2.7 de ocultar perfiles desde el propio dispositivo (acceso.ocultos / acceso.nuevos).
    v2.7  Conexiones y perfiles por dispositivo
      + MATE.conexion: cada vez que se abre una página manda a la planilla una fila tipo:'conexion' (paso: entrada,
        recarga, navegacion o atras) con el perfil, el dispositivo y la página; al elegir perfil, una tipo:'perfil'
@@ -29,7 +38,7 @@
 */
 (function(){
 'use strict';
-const VERSION='2.7';
+const VERSION='2.8';
 const MATE=window.MATE=window.MATE||{};
 MATE.version=VERSION;
 MATE.perfiles=MATE.perfiles||[];
@@ -113,13 +122,33 @@ if(document.body) montaFondo(); else document.addEventListener('DOMContentLoaded
 
 /* ==== PERFIL ==== */
 let perfilId=qs.get('p')||MATE.global.get('perfil',null), ultimoPerfil=perfilId;
-// Perfiles que se ven en este dispositivo (se eligen en Ajustes de padres); uno oculto no entra ni con ?p=.
+// v2.8: los perfiles de la familia (perfiles.js) solo con permiso del administrador, que lo da desde su panel
+// (hoja "dispositivos", columna permitidos). Los creados en este dispositivo (nuevo:true) siempre se ven.
+// mate.global.acceso = {permitidos:[ids], configurado: lo fijó el administrador, ts: último pedido}.
+// La primera vez, un dispositivo que ya tenía datos de un perfil lo sigue viendo hasta que el administrador lo configure.
+ls.del('mate.global.acceso.ocultos'); ls.del('mate.global.acceso.nuevos');
+if(!MATE.global.get('acceso',null)){
+  const previo=new Set(); for(let i=0;i<localStorage.length;i++){ const m=/^mate\.([^.]+)\./.exec(localStorage.key(i)||''); if(m&&m[1]!=='global') previo.add(m[1]); }
+  MATE.global.set('acceso',{permitidos:[...previo],configurado:false,ts:0});
+}
 MATE.acceso={
-  ocultos:()=>MATE.global.get('acceso.ocultos',[])||[],
-  puede:id=>MATE.acceso.ocultos().indexOf(id)<0,
+  estado:()=>MATE.global.get('acceso',null)||{permitidos:[],configurado:false,ts:0},
+  permitidos:()=>MATE.acceso.estado().permitidos||[],
+  puede:id=>{ const p=MATE.perfiles.find(x=>x.id===id); return !!p&&(!!p.nuevo||MATE.acceso.permitidos().indexOf(id)>=0); },
   visibles:()=>MATE.perfiles.filter(p=>MATE.acceso.puede(p.id)),
-  ver(id,si){ const l=MATE.acceso.ocultos().filter(x=>x!==id); if(!si) l.push(id); MATE.global.set('acceso.ocultos',l); MATE.log('acceso',id,si?'visible':'oculto'); },
-  nuevos(v){ if(v===undefined) return MATE.global.get('acceso.nuevos',true)!==false; MATE.global.set('acceso.nuevos',!!v); }
+  // Pide los permisos de este dispositivo a la planilla; si cambian, avisa con 'mate-acceso'.
+  async actualizar(forzar){
+    const url=MATE.nube.url(), est=MATE.acceso.estado(); if(!url||navigator.onLine===false||(!forzar&&Date.now()-est.ts<60000)) return false;
+    try{
+      const res=await fetch(url+(url.indexOf('?')<0?'?':'&')+'accion=permisos&dispositivo='+encodeURIComponent(MATE.dispositivo.id));
+      const j=await res.json(); if(!j.ok) throw new Error(j.error||'respuesta inválida');
+      const nuevo=j.configurado?{permitidos:(j.permitidos||[]).map(String),configurado:true,ts:Date.now()}:Object.assign({},est,{ts:Date.now()});
+      const cambio=JSON.stringify(nuevo.permitidos)!==JSON.stringify(est.permitidos);
+      MATE.global.set('acceso',nuevo); MATE.log('acceso',j.configurado?'del administrador':'sin configurar',nuevo.permitidos.join(',')||'(ninguno)');
+      if(cambio) document.dispatchEvent(new CustomEvent('mate-acceso'));
+      return true;
+    }catch(err){ MATE.log('acceso','no se pudo consultar',String(err.message||err)); return false; }
+  }
 };
 MATE.perfil=()=>perfilId&&MATE.acceso.puede(perfilId)?MATE.perfiles.find(p=>p.id===perfilId)||null:null;
 MATE.setPerfil=id=>{
@@ -204,7 +233,7 @@ MATE.nube={
         const cola=MATE.global.get(COLA,[]); if(!cola.length) break;
         const lote=cola.slice(0,LOTE), ids=new Set(lote.map(e=>e.id));
         const perfiles=[...new Set(lote.map(e=>e.perfil))].map(id=>{ const p=MATE.perfiles.find(x=>x.id===id); return p?{id:p.id,nombre:p.nombre,avatar:p.avatar,grado:p.grado,color:p.color}:{id}; });
-        const res=await fetch(url,{method:'POST',body:JSON.stringify({accion:'guardar',eventos:lote,perfiles,dispositivo:{id:MATE.dispositivo.id,nombre:MATE.dispositivo.nombre}})});
+        const res=await fetch(url,{method:'POST',body:JSON.stringify({accion:'guardar',eventos:lote,perfiles,dispositivo:{id:MATE.dispositivo.id,nombre:MATE.dispositivo.nombre,acceso:MATE.acceso.permitidos()}})});
         const j=await res.json(); if(!j.ok) throw new Error(j.error||'respuesta inválida');
         guardaCola(MATE.global.get(COLA,[]).filter(e=>!ids.has(e.id)));
         MATE.global.set('nube.estado',{ultimoEnvio:Date.now(),enviados:(MATE.nube.estado().enviados||0)+lote.length});
@@ -212,6 +241,14 @@ MATE.nube={
       }
     }catch(err){ ok=false; MATE.global.set('nube.estado',Object.assign(MATE.nube.estado(),{ultimoError:String(err.message||err),errorTs:Date.now()})); MATE.log('nube','no se pudo enviar',String(err)); MATE.nube.agendar(60000); }
     enviando=false; return ok;
+  },
+  // Panel del administrador: qué perfiles de la familia puede usar un dispositivo y una nota que solo ve él (planilla).
+  async permisos(clave,disp,permitidos,nota){
+    const url=MATE.nube.url(); if(!url) throw new Error('Falta la dirección de la planilla.');
+    const res=await fetch(url,{method:'POST',body:JSON.stringify({accion:'permisos',clave,dispositivo:disp,permitidos,nota})});
+    const j=await res.json(); if(!j.ok) throw new Error(j.error==='clave'?'La clave no es correcta.':(j.error||'No se pudo guardar.'));
+    if(disp===MATE.dispositivo.id) MATE.acceso.actualizar(true);
+    return j;
   },
   // Trae todo el registro (para Ajustes de padres). clave: la de lectura que está en el script.
   async leer(clave){
@@ -239,6 +276,8 @@ MATE.ejercicio=(act,ev)=>{ const p=MATE.perfil(); if(!p) return null; const e=Ob
 window.addEventListener('online',()=>MATE.nube.agendar(1000));
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&MATE.nube.pendientes()) MATE.nube.vaciar(); });
 if(MATE.nube.url()) setTimeout(()=>{ MATE.nube.subirHistorial(); MATE.nube.vaciar(); },2500);
+setTimeout(()=>MATE.acceso.actualizar(),600);
+window.addEventListener('online',()=>MATE.acceso.actualizar(true));
 
 /* ==== CONEXIONES: quién entra, desde qué dispositivo y cuándo ==== */
 // Una fila tipo:'conexion' por cada página que se abre (paso: entrada = pestaña o app nueva, recarga, navegacion, atras)
