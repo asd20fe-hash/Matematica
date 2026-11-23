@@ -9,7 +9,7 @@ Sale del prototipo `docs/1ro-monedas/prototipo_saltos_monedas_v1.0.html`; el pla
   (`DINERO`) y `dinero.css` (prefijo `din-`), para las actividades que siguen (decenas, aumentos, cambio de $20, litros).
 - **Pruebas:** `node tests/monedas-1ro/run.js` (1000 ítems por nivel, salto y tipo con semilla fija; la pregunta de la
   tarea "$20 con monedas de $2 → 10").
-- **Depurar:** `?debug=1` (logs `[1ro-monedas v1.0.0]`, `window.__monedas`), `?seed=N`, `?nivel=N`.
+- **Depurar:** `?debug=1` (logs `[1ro-monedas vX.Y.Z]`, `window.__monedas`), `?seed=N`, `?nivel=N`.
 
 ## Pestañas (una sola actividad en el menú)
 
@@ -34,7 +34,7 @@ Sale del prototipo `docs/1ro-monedas/prototipo_saltos_monedas_v1.0.html`; el pla
   sueltos no se pueden contar).
 - `DINERO.Recta`: `setN(N, inicio)`, `add(v)`/`pop()`/`reset()` devuelven la promesa de la animación (cola), `total`
   incluye `inicio`. Escalas: N ≤ 20 → 36 px por número; ≤ 30 → 26; ≤ 50 → 16 (números de a 5); más → 9 (de a 10).
-- **Registro:** cada intento con `ctx.reg.evento({tipo:'paso', tema, paso, …})`; `tema` es `desafio`, `pagar` o
+- **Registro:** cada intento con `ctx.reg.evento({tipo:'paso', tema, paso, …})`; `tema` es `desafio`, `pagar`, `menos` o
   `moneda2`. La balanza va con `intento: 0` (exploración, no cuenta). Códigos en `MONEDAS1.ERRORES` + `TE_PASAS`,
   todos con nombre en `registro.js` (una prueba lo controla).
 - **Textos en MAYÚSCULAS** por CSS (`#app`); la voz (`decir`) lee "$20" como "20 pesos". Sonido: `DINERO.beep` y
