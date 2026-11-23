@@ -33,6 +33,7 @@ const ARCHIVOS = [
   'actividades/4to-fracciones-potes-vasos/index.html', 'actividades/4to-fracciones-potes-vasos/potes.css', 'actividades/4to-fracciones-potes-vasos/potes.js',
   'actividades/4to-fracciones-repartos/index.html', 'actividades/4to-fracciones-repartos/repartos.css', 'actividades/4to-fracciones-repartos/repartos.js',
   'actividades/4to-fracciones-repaso/index.html', 'actividades/4to-fracciones-repaso/repaso.css', 'actividades/4to-fracciones-repaso/repaso.js',
+  'actividades/4to-geometria-rectas/index.html', 'actividades/4to-geometria-rectas/rectas-logica.js', 'actividades/4to-geometria-rectas/rectas.css', 'actividades/4to-geometria-rectas/rectas.js',
   'actividades/4to-multiplicacion-paso-a-paso/index.html', 'actividades/4to-multiplicacion-paso-a-paso/multiplicacion-logica.js', 'actividades/4to-multiplicacion-paso-a-paso/multiplicacion.css', 'actividades/4to-multiplicacion-paso-a-paso/multiplicacion.js',
   'actividades/4to-tablas/index.html', 'actividades/4to-tablas/pitagorica.js', 'actividades/4to-tablas/tablas-logica.js', 'actividades/4to-tablas/tablas.css', 'actividades/4to-tablas/tablas.js',
   'actividades/4to-tiene-sentido/index.html', 'actividades/4to-tiene-sentido/sentido-logica.js', 'actividades/4to-tiene-sentido/sentido.css', 'actividades/4to-tiene-sentido/sentido.js',

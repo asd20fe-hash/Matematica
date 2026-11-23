@@ -1,0 +1,45 @@
+/* Rectas: solo lo propio de esta actividad (lo común está en _comun-4to/comun.css). */
+:root{ --rc-ref:#1f2a44; --rc-nueva:#1d6fd8; --rc-guia:#c2410c; --rc-obj:#8b5cf6; --rc-manija:rgba(29,111,216,.18); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --rc-ref:#ece9ff; --rc-nueva:#60a5fa; --rc-guia:#fbbf24; --rc-obj:#c4b5fd; --rc-manija:rgba(96,165,250,.22); } }
+:root[data-theme="dark"]{ --rc-ref:#ece9ff; --rc-nueva:#60a5fa; --rc-guia:#fbbf24; --rc-obj:#c4b5fd; --rc-manija:rgba(96,165,250,.22); }
+
+.rc-cabeza{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:600}
+.rc-cuenta{font-size:20px;color:var(--ok)}
+.rc-consigna{font-size:24px;font-weight:600;margin:8px 0 2px;line-height:1.3}
+.rc-consigna b{font-size:1.15em;color:var(--accent)}
+.rc-ayuda{font-size:16px;color:var(--muted);margin:0 0 8px}
+
+/* tablero: hoja cuadriculada */
+.rc-tablero{display:block;width:100%;height:clamp(260px,calc(100vh - 400px),620px);height:clamp(260px,calc(100dvh - 400px),620px);
+  touch-action:none;user-select:none;-webkit-user-select:none;border-radius:14px;border:2px solid var(--glass-border);box-shadow:var(--shadow);
+  background-color:var(--papel);background-image:linear-gradient(var(--grilla) 1px,transparent 1px),linear-gradient(90deg,var(--grilla) 1px,transparent 1px);
+  background-size:20px 20px;font-family:"Fredoka",system-ui,sans-serif;cursor:crosshair}
+.rc-tablero text{font-weight:700;paint-order:stroke;stroke:var(--papel);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+.rc-ref{stroke:var(--rc-ref);stroke-width:3;stroke-linecap:round}
+.rc-ref-txt{fill:var(--rc-ref);font-size:24px}
+.rc-punto{fill:var(--tinta)}
+.rc-punto-txt{fill:var(--tinta);font-size:22px}
+.rc-punto.titila{animation:rc-titila .35s ease-in-out 6 alternate;fill:var(--rc-obj)}
+@keyframes rc-titila{to{opacity:.15}}
+.rc-ext{stroke:var(--rc-nueva);stroke-width:1.6;stroke-dasharray:7 7;opacity:.75}
+.rc-seg{stroke:var(--rc-nueva);stroke-width:3.5;stroke-linecap:round}
+.rc-manija{fill:var(--rc-manija);stroke:var(--rc-nueva);stroke-width:2}
+.rc-nueva-txt{fill:var(--rc-nueva);font-size:24px}
+.rc-guia{stroke:var(--rc-guia);stroke-width:3;stroke-dasharray:9 6;stroke-linecap:round}
+.rc-guia-txt{fill:var(--rc-guia);font-size:15px}
+.rc-recto{fill:none;stroke:var(--ok);stroke-width:2.5}
+.rc-tablero.ok .rc-seg{stroke:var(--ok)} .rc-tablero.ok .rc-ext{stroke:var(--ok)} .rc-tablero.ok .rc-nueva-txt{fill:var(--ok)}
+.rc-tablero.ok .rc-manija{display:none}
+.rc-tablero.ok{cursor:default}
+
+/* comprobaciones */
+.rc-fb{min-height:56px;margin:8px 0 2px;font-size:18px}
+.rc-fb p{margin:2px 0;padding:4px 10px;border-radius:10px}
+.rc-fb .ok{background:var(--ok-bg)} .rc-fb .mal{background:var(--bad-bg)}
+.rc-notacion{text-align:center;margin:6px 0}
+.rc-notacion p{font-size:20px;font-weight:600;margin:4px 0}
+.rc-notacion .ref-opcion{font-family:"Fredoka",system-ui,sans-serif;min-width:110px;font-size:26px}
+.rc-botones{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.rc-botones .ref-btn{flex:1 1 120px;max-width:200px;font-size:19px}
+@media (max-width:480px){ .rc-consigna{font-size:20px} .rc-fb{font-size:16px} .rc-botones .ref-btn{flex:1 1 40%} }
+@media (prefers-reduced-motion: reduce){ .rc-punto.titila{animation:none;r:9} }

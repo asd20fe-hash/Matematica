@@ -34,6 +34,13 @@ MATE.actividades=[
   {id:'4to-detective-problemas',nivelMax:4,titulo:'Detective de problemas',descripcion:'Leé, marcá los datos, armá el plan y respondé.',icono:'🔎',grados:['4to'],ruta:'actividades/4to-detective-problemas/index.html',version:'1.0.5'},
   {id:'4to-tiene-sentido',nivelMax:3,titulo:'¿Tiene sentido?',descripcion:'Estimá, verificá y descubrí resultados imposibles.',icono:'🤔',grados:['4to'],ruta:'actividades/4to-tiene-sentido/index.html',version:'1.0.5'},
   {id:'4to-calculo-con-ceros',nivelMax:4,titulo:'Cálculo con ceros',descripcion:'Multiplicá, dividí y sumá sin perder ni un cero.',icono:'🧮',grados:['4to'],ruta:'actividades/4to-calculo-con-ceros/index.html',version:'1.0.4'},
+  // Geometría de 4to
+  {id:'4to-geometria-rectas',nivelMax:3,titulo:'Rectas: paralelas, perpendiculares y oblicuas',descripcion:'Trazá la recta que te piden por el punto justo y escribila con su símbolo.',icono:'📐',grados:['4to'],ruta:'actividades/4to-geometria-rectas/index.html',version:'1.0.0',
+   errores:{CONFUNDE_TIPO:'Trazó otro tipo de recta (paralela en vez de perpendicular, etc.)',INCLINACION:'La inclinación no alcanza (casi paralela o casi perpendicular)',PUNTO_EQUIVOCADO:'La hizo pasar por otro punto',NO_PASA_PUNTO:'No pasa por el punto pedido',NOTACION:'Eligió mal el símbolo (//, ⊥, ∠)'},
+   stats:()=>MATE.perfiles.filter(p=>p.grado==='4to').map(p=>{ let r=null; try{ r=JSON.parse(localStorage.getItem('mate.'+p.id+'.4to-geometria-rectas.resumen')||'null'); }catch(e){}
+     if(!r||!r.tipos.length) return p.nombre+' todavía no terminó una ronda.';
+     const N={CONFUNDE_TIPO:'confundir el tipo de recta',INCLINACION:'la inclinación',PUNTO_EQUIVOCADO:'pasar por otro punto',NO_PASA_PUNTO:'no pasar por el punto',NOTACION:'el símbolo'};
+     return p.nombre+': '+r.tipos.map(t=>t.tipo+' '+t.pct1+'% a la primera ('+t.n+', '+(Math.round(t.msMedio/100)/10)+' s)').join('; ')+(r.error?'. Lo que más le cuesta: '+(N[r.error]||r.error)+' ('+r.nError+').':'.'); }).join(' ')},
   // Fracciones de 4to (las siete juntas)
   {id:'4to-fracciones-repartos',nivelMax:3,titulo:'Repartos',descripcion:'Repartí en partes iguales: primero los enteros, después lo que sobra.',icono:'🍕',grados:['4to'],ruta:'actividades/4to-fracciones-repartos/index.html',version:'1.0.2'},
   {id:'4to-fracciones-partes',nivelMax:3,titulo:'Partes iguales',descripcion:'Leé, pintá y armá fracciones: cuenta el tamaño, no los pedazos.',icono:'🍫',grados:['4to'],ruta:'actividades/4to-fracciones-partes/index.html',version:'1.0.2'},

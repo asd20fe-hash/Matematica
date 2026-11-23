@@ -14,7 +14,9 @@
     PLAN_ORDEN: 'Orden equivocado', PLAN_INCOMPLETO: 'Plan incompleto', RESTO_INTERPRETACION: 'No supo qué hacer con el resto', UNIDAD: 'Unidad equivocada',
     DETECCION_OMITIDA: 'No vio un error', FALSA_ALARMA: 'Marcó error donde no había', MOTIVO: 'Eligió mal la causa', CERO_PERDIDO: 'Perdió o agregó un cero',
     MEZCLA_ESTRATEGIA: 'Redondeó sin compensar', MITAD_AUTOMATICA: 'Respondió la mitad del dividendo', RESERVA: 'Se llevó mal', OTRO: 'Otro',
-    ANOTO_TODO: 'Anotó el número entero sin llevarse', SUMA: 'Suma de las filas mal hecha', SUMO_EN_VEZ: 'Sumó en vez de multiplicar'
+    ANOTO_TODO: 'Anotó el número entero sin llevarse', SUMA: 'Suma de las filas mal hecha', SUMO_EN_VEZ: 'Sumó en vez de multiplicar',
+    CONFUNDE_TIPO: 'Rectas: trazó otro tipo de recta', INCLINACION: 'Rectas: inclinación que no alcanza', PUNTO_EQUIVOCADO: 'Rectas: pasó por otro punto',
+    NO_PASA_PUNTO: 'Rectas: no pasa por el punto', NOTACION: 'Rectas: símbolo equivocado (//, ⊥, ∠)'
   };
 
   function ejemplo(e) {
