@@ -113,3 +113,49 @@ prueba('rectas: reproducible con la semilla, notación y estadísticas', functio
   for (var i = 0; i < 50; i++) { var t = b.sacar(); c[t] = (c[t] || 0) + 1; }
   assert.strictEqual(c.perpendicular, 30);
 });
+prueba('rectas: hoja con consignas encadenadas (1000 hojas por nivel y tamaño, con rectas del chico algo torcidas)', function () {
+  [[340, 300], [360, 420], [900, 520], [600, 380]].forEach(function (wh) {
+    var W = wh[0], H = wh[1];
+    [1, 2, 3].forEach(function (nivel) {
+      var az = AZ.crear(7000 * W + nivel), ch = AZ.crear(13 + nivel), enc = 0, tipos = {}, recortadas = 0;
+      for (var i = 0; i < 1000; i++) {
+        var h = RC.generarHoja(az, W, H, { nivel: nivel });
+        if (W >= 360 && H >= 380) { assert.ok(!h.recortada, 'hoja completa'); assert.strictEqual(h.pasos.length, RC.HOJA[nivel].pasos);
+          assert.strictEqual(h.puntos.length, h.pasos.length + RC.HOJA[nivel].extra); }
+        else { assert.ok(h.pasos.length >= 3); recortadas += h.recortada ? 1 : 0; }
+        var letras = [h.ref.nombre].concat(h.pasos.map(function (P) { return P.nueva.nombre; }));
+        assert.strictEqual(new Set(letras).size, letras.length, 'rectas con letras distintas');
+        assert.strictEqual(new Set(h.puntos.map(function (p) { return p.nombre; })).size, h.puntos.length);
+        h.puntos.forEach(function (p) { assert.ok(RC.adentro(p, W, H, 49.9), 'punto adentro');
+          assert.ok(letras.every(function (l) { return l.toLowerCase() !== p.nombre; }), 'no repite la letra de una recta'); });
+        for (var a = 0; a < h.puntos.length; a++) for (var b = a + 1; b < h.puntos.length; b++) assert.ok(RC.dist(h.puntos[a], h.puntos[b]) > 94.8, 'puntos separados');
+        assert.notStrictEqual(h.pasos[0].tipo, 'oblicua');
+        assert.ok(h.pasos[0].ref < 0 && h.pasos[1].ref < 0);
+        RC.TIPOS.forEach(function (t) { assert.ok(h.pasos.some(function (P) { return P.tipo === t; }), 'están los tres tipos'); });
+        var lineas = [];
+        h.pasos.forEach(function (P, k) {
+          tipos[P.tipo] = 1;
+          if (P.ref >= 0) { enc++; assert.ok(P.ref < k && h.pasos[P.ref].tipo !== 'oblicua' && h.pasos[P.ref].ref < 0, 'encadena sobre una recta anterior no oblicua trazada a R');
+            assert.strictEqual(P.refNombre, h.pasos[P.ref].nueva.nombre); }
+          assert.ok(/^[A-Z] (\/\/|⊥|∠) [A-Z] por [a-z]$/.test(RC.consignaHoja(P)));
+          var e = RC.pasoHoja(h, k, lineas);
+          assert.strictEqual(e.puntos.filter(function (p) { return p.objetivo; }).length, 1);
+          assert.ok(RC.distRecta(e.objetivo, e.ref.a, e.ref.b) > 35, 'el punto queda lejos de su referencia (' + RC.distRecta(e.objetivo, e.ref.a, e.ref.b) + ')');
+          if (P.tipo === 'perpendicular') assert.ok(RC.adentro(RC.pie(e.objetivo, e.ref.a, e.ref.b), W, H, 5), 'pie adentro');
+          var s = RC.solucion(e), r = RC.comprobar(e, s, 12);
+          assert.ok(r.ok, 'la solución pasa');
+          if (P.ideal && P.ref < 0) assert.ok(RC.comprobar(e, P.ideal, 12).ok, 'la ideal del generador pasa');
+          var g = RC.guia(e); assert.ok(RC.comprobar(e, g, 12).dirOk);
+          // la recta del chico: bien, pero torcida hasta 5,9° y corrida hasta 11,9 px (lo máximo que se acepta)
+          var ang = RC.angulo(s.a, s.b) + (P.tipo === 'oblicua' ? -25 + ch.siguiente() * 50 : -5.9 + ch.siguiente() * 11.8), o = e.objetivo, dd = -11.9 + ch.siguiente() * 23.8;
+          var nx = -Math.sin(ang * D2R), ny = Math.cos(ang * D2R), m = { x: o.x + nx * dd, y: o.y + ny * dd };
+          var L = { a: { x: m.x - Math.cos(ang * D2R) * 60, y: m.y - Math.sin(ang * D2R) * 60 }, b: { x: m.x + Math.cos(ang * D2R) * 60, y: m.y + Math.sin(ang * D2R) * 60 } };
+          assert.ok(RC.comprobar(e, L, 12).ok, 'la recta torcida del chico vale');
+          lineas.push(L);
+        });
+      }
+      assert.ok(enc >= 1000 * (W >= 360 ? RC.HOJA[nivel].pasos - 2 : 1), 'hay pasos encadenados');
+    });
+  });
+  assert.deepStrictEqual(RC.generarHoja(AZ.crear(9), 600, 400, { nivel: 2 }), RC.generarHoja(AZ.crear(9), 600, 400, { nivel: 2 }));
+});

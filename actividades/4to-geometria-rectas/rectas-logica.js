@@ -124,6 +124,132 @@
     throw new Error('rectas: no pude armar un ejercicio en ' + W + '×' + H + ' (último ' + ultimo + ')');
   }
 
+  /* ---------- modo hoja ("fotocopia"): consignas encadenadas sobre un mismo tablero ----------
+     Como la hoja de la escuela: "D ⊥ R por p", "E // R por q", "S // D por m"… La recta de referencia de los pasos
+     encadenados es la que el chico trazó antes (la suya, no la ideal). Solo se encadena sobre paralelas y
+     perpendiculares trazadas a R: la dirección de una oblicua del chico no se puede prever, y encadenar sobre una
+     encadenada suma las torceduras (6° + 6°). El punto de un encadenado queda a 150 px como máximo (a lo largo de la
+     referencia) del punto por el que pasa esa recta, así la tolerancia de 6° no lo acerca a menos de ~40 px.
+     Nivel 1: 3 pasos (2 sobre R y 1 encadenado); 2 y 3: 4 pasos (2 y 2) y 1 o 2 puntos de más. */
+  var HOJA = { 1: { pasos: 3, extra: 0 }, 2: { pasos: 4, extra: 1 }, 3: { pasos: 4, extra: 2 } };
+  var SEP_HOJA = 95, LEJOS_REF = 45.5, LEJOS_HIJA = 58;   // separación entre puntos; distancia de un punto a R y a las rectas que traza el chico
+
+  /* Qué se pide en cada paso: tipo y referencia (-1 = R, j = la recta del paso j). Sin geometría. */
+  function planHoja(az, n, tipoExtra) {
+    var tipos = az.mezclar(TIPOS.slice()); while (tipos.length < n) tipos.push(tipoExtra || az.elegir(TIPOS));
+    tipos = az.mezclar(tipos);
+    var k = tipos.indexOf(tipos.filter(function (t) { return t !== 'oblicua'; })[0]), x = tipos[0]; tipos[0] = tipos[k]; tipos[k] = x;   // el primero sirve de referencia
+    var pasos = [], usadas = {};
+    tipos.forEach(function (t, i) {
+      var ref = -1;
+      if (i >= 2) {   // encadenado: la recta no oblicua más nueva (trazada a R) que todavía no fue referencia (si no, la más nueva)
+        var cand = pasos.map(function (p, j) { return j; }).filter(function (j) { return pasos[j].tipo !== 'oblicua' && pasos[j].ref < 0; }).reverse();
+        ref = cand.filter(function (j) { return !usadas[j]; })[0]; if (ref === undefined) ref = cand[0];
+        usadas[ref] = 1;
+      }
+      pasos.push({ tipo: t, ref: ref });
+    });
+    return pasos;
+  }
+
+  /* Genera una hoja en W × H. opts: {nivel, tipoExtra}. Devuelve
+     {modo:'hoja', W, H, nivel, angRef, ref:{nombre,a,b,etiqueta}, puntos:[{nombre,x,y}],
+      pasos:[{tipo, ref, refNombre, nueva:{nombre}, objetivo:{nombre,x,y}, ideal:{a,b}|null}], intentosGen} */
+  function generarHoja(az, W, H, opts) {
+    opts = opts || {};
+    var nivel = HOJA[opts.nivel] ? opts.nivel : 2, cfg = NIVELES[nivel], hc = HOJA[nivel];
+    var menor = Math.min(W, H), dMin = 70, dMax = Math.max(dMin + 15, 0.3 * menor);
+    // en un tablero chico (celular acostado) primero se sacan los puntos de más y después un paso
+    var h = armar(hc.pasos, hc.extra, 150) || armar(hc.pasos, 0, 150) || armar(3, 0, 400);
+    if (!h) throw new Error('rectas: no pude armar una hoja en ' + W + '×' + H);
+    h.recortada = h.pasos.length < hc.pasos || h.puntos.length < hc.pasos + hc.extra;
+    return h;
+    function armar(nPasos, nExtra, maxK) {
+    for (var k = 1; k <= maxK; k++) {
+      var plan = planHoja(az, nPasos, opts.tipoExtra);
+      var ang = az.prob(cfg.empinada) ? (az.prob(0.5) ? 1 : -1) * (55 + az.siguiente() * 25) : -cfg.suave + az.siguiente() * 2 * cfg.suave;
+      ang = Math.round(ang * 10) / 10;
+      var c = { x: W * (0.35 + az.siguiente() * 0.3), y: H * (0.38 + az.siguiente() * 0.24) };
+      var segR = recortar(c, ang, W, H, 25); if (!segR || dist(segR.a, segR.b) < 120) continue;
+      // rectas conocidas: R y las ideales de los pasos no oblicuos ({p, ang, hija})
+      var rectas = [{ p: c, ang: ang, hija: false }], ideales = [], puntos = [], ok = true;
+      for (var i = 0; i < plan.length && ok; i++) {
+        var P = plan[i], base = P.ref < 0 ? rectas[0] : ideales[P.ref];
+        var seg = recortar(base.p, base.ang, W, H, P.ref < 0 ? 25 : 40), obj = null, angN = null;
+        if (!seg) { ok = false; break; }
+        var L = dist(seg.a, seg.b), ux = (seg.b.x - seg.a.x) / L, uy = (seg.b.y - seg.a.y) / L;
+        for (var r = 0; r < 50 && !obj; r++) {
+          var t = 0.12 + az.siguiente() * 0.76, f = { x: seg.a.x + (seg.b.x - seg.a.x) * t, y: seg.a.y + (seg.b.y - seg.a.y) * t };
+          if (P.ref >= 0) { var sp = -150 + az.siguiente() * 300; f = { x: base.p.x + ux * sp, y: base.p.y + uy * sp }; if (!adentro(f, W, H, 40)) continue; }
+          var lado = az.prob(0.5) ? 1 : -1, d = dMin + az.siguiente() * (dMax - dMin);
+          var q = { x: f.x - uy * d * lado, y: f.y + ux * d * lado };
+          if (!adentro(q, W, H, 50)) continue;
+          if (P.tipo === 'perpendicular' && !adentro(f, W, H, P.ref < 0 ? 25 : 40)) continue;
+          if (puntos.some(function (o) { return dist(o, q) <= SEP_HOJA; })) continue;
+          if (rectas.some(function (R) { return distRecta(q, R.p, { x: R.p.x + Math.cos(R.ang * D2R), y: R.p.y + Math.sin(R.ang * D2R) }) <= (R.hija ? LEJOS_HIJA : LEJOS_REF); })) continue;
+          var an = P.tipo === 'oblicua' ? null : base.ang + (P.tipo === 'perpendicular' ? 90 : 0);
+          if (an !== null) {
+            var q2 = { x: q.x + Math.cos(an * D2R), y: q.y + Math.sin(an * D2R) };
+            if (puntos.some(function (o) { return distRecta(o, q, q2) <= 40; })) continue;   // la respuesta no pasa por otro punto
+          }
+          obj = q; angN = an;
+        }
+        if (!obj) { ok = false; break; }
+        puntos.push(obj);
+        ideales.push(angN === null ? null : { p: obj, ang: angN });
+        if (angN !== null) rectas.push({ p: obj, ang: angN, hija: true });
+      }
+      if (!ok) continue;
+      var nObj = puntos.length;
+      for (var j = 0; j < nExtra && ok; j++) {
+        var p = null;
+        for (var r2 = 0; r2 < 60 && !p; r2++) {
+          var q3 = { x: 50 + az.siguiente() * (W - 100), y: 50 + az.siguiente() * (H - 100) };
+          if (puntos.some(function (o) { return dist(o, q3) <= SEP_HOJA; })) continue;
+          if (rectas.some(function (R) { return distRecta(q3, R.p, { x: R.p.x + Math.cos(R.ang * D2R), y: R.p.y + Math.sin(R.ang * D2R) }) <= (R.hija ? LEJOS_HIJA : LEJOS_REF); })) continue;
+          p = q3;
+        }
+        if (p) puntos.push(p); else ok = false;
+      }
+      if (!ok) continue;
+      // nombres: R y una mayúscula por paso; los puntos, minúsculas que no repiten la letra de ninguna recta
+      var may = az.mezclar(MAYUS.slice()).slice(0, plan.length + 1), bajas = may.map(function (l) { return l.toLowerCase(); });
+      var min = az.mezclar(MINUS.filter(function (l) { return bajas.indexOf(l) < 0; }));
+      var pts = puntos.map(function (q, i) { return { x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, i: i }; });
+      az.mezclar(pts.slice()).forEach(function (q, i) { q.nombre = min[i]; });   // letras al azar, sin que el orden delate cuál es cuál
+      var a = segR.a, b = segR.b, uxR = (b.x - a.x) / dist(a, b), uyR = (b.y - a.y) / dist(a, b);
+      var lx = b.x - uxR * 22 - uyR * 18, ly = b.y - uyR * 22 + uxR * 18;
+      if (!adentro({ x: lx, y: ly }, W, H, 12)) { lx = b.x - uxR * 22 + uyR * 18; ly = b.y - uyR * 22 - uxR * 18; }
+      var pasos = plan.map(function (P, i) {
+        var o = pts[i], id = ideales[i];
+        return { tipo: P.tipo, ref: P.ref, refNombre: P.ref < 0 ? may[0] : may[P.ref + 1], nueva: { nombre: may[i + 1] }, objetivo: { nombre: o.nombre, x: o.x, y: o.y },
+                 ideal: id ? { a: { x: o.x - Math.cos(id.ang * D2R) * 80, y: o.y - Math.sin(id.ang * D2R) * 80 }, b: { x: o.x + Math.cos(id.ang * D2R) * 80, y: o.y + Math.sin(id.ang * D2R) * 80 } } : null };
+      });
+      var lista = pts.map(function (q) { return { nombre: q.nombre, x: q.x, y: q.y }; });
+      return { modo: 'hoja', W: W, H: H, nivel: nivel, angRef: ang, intentosGen: k, nObjetivos: nObj,
+               ref: { nombre: may[0], a: a, b: b, etiqueta: { x: lx, y: ly } }, puntos: az.mezclar(lista), pasos: pasos };
+    }
+    return null;
+    }
+  }
+
+  /* El ejercicio del paso i de una hoja, con la forma que usa comprobar(), guia() y solucion().
+     lineas[j] = la recta {a,b} que trazó el chico en el paso j (la referencia de los encadenados). */
+  function pasoHoja(h, i, lineas) {
+    var P = h.pasos[i], ref, angRef;
+    if (P.ref < 0) { ref = { nombre: h.ref.nombre, a: h.ref.a, b: h.ref.b }; angRef = h.angRef; }
+    else {
+      var L = lineas[P.ref]; angRef = angulo(L.a, L.b);
+      var s = recortar({ x: (L.a.x + L.b.x) / 2, y: (L.a.y + L.b.y) / 2 }, angRef, h.W, h.H, 0) || { a: L.a, b: L.b };
+      ref = { nombre: P.refNombre, a: s.a, b: s.b };
+    }
+    return { modo: 'hoja', paso: i, tipo: P.tipo, nivel: h.nivel, W: h.W, H: h.H, angRef: angRef, ref: ref, nueva: { nombre: P.nueva.nombre }, encadenada: P.ref >= 0,
+             objetivo: { nombre: P.objetivo.nombre, x: P.objetivo.x, y: P.objetivo.y, objetivo: true },
+             puntos: h.puntos.map(function (p) { return { nombre: p.nombre, x: p.x, y: p.y, objetivo: p.nombre === P.objetivo.nombre }; }) };
+  }
+  /* "D ⊥ R por p": la consigna con el símbolo, como en la fotocopia. */
+  function consignaHoja(P) { return P.nueva.nombre + ' ' + SIMBOLO[P.tipo] + ' ' + P.refNombre + ' por ' + P.objetivo.nombre; }
+
   /* ---------- corrección ----------
      linea = {a:{x,y}, b:{x,y}} (la del chico); tolDist en unidades del tablero (12 px de pantalla).
      Devuelve {ok, dirOk, puntoOk, d, distancia, trazada, puntoTocado, error, msgDir, msgPunto}. */
@@ -213,6 +339,7 @@
   var api = {
     TIPOS: TIPOS, MAYUS: MAYUS, MINUS: MINUS, TOL_ANG: TOL_ANG, OBL_MIN: OBL_MIN, OBL_MAX: OBL_MAX, SIMBOLO: SIMBOLO, NIVELES: NIVELES, ERRORES: ERRORES, EXPLICA: EXPLICA,
     dist: dist, distRecta: distRecta, angulo: angulo, difAng: difAng, pie: pie, cruce: cruce, recortar: recortar, adentro: adentro, claseDir: claseDir,
+    HOJA: HOJA, planHoja: planHoja, generarHoja: generarHoja, pasoHoja: pasoHoja, consignaHoja: consignaHoja,
     bolsa: bolsa, generar: generar, comprobar: comprobar, notaciones: notaciones, guia: guia, solucion: solucion, estadisticas: estadisticas
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }

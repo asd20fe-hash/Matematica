@@ -35,7 +35,7 @@ MATE.actividades=[
   {id:'4to-tiene-sentido',nivelMax:3,titulo:'¿Tiene sentido?',descripcion:'Estimá, verificá y descubrí resultados imposibles.',icono:'🤔',grados:['4to'],ruta:'actividades/4to-tiene-sentido/index.html',version:'1.0.5'},
   {id:'4to-calculo-con-ceros',nivelMax:4,titulo:'Cálculo con ceros',descripcion:'Multiplicá, dividí y sumá sin perder ni un cero.',icono:'🧮',grados:['4to'],ruta:'actividades/4to-calculo-con-ceros/index.html',version:'1.0.4'},
   // Geometría de 4to
-  {id:'4to-geometria-rectas',nivelMax:3,titulo:'Rectas: paralelas, perpendiculares y oblicuas',descripcion:'Trazá la recta que te piden por el punto justo y escribila con su símbolo.',icono:'📐',grados:['4to'],ruta:'actividades/4to-geometria-rectas/index.html',version:'1.0.0',
+  {id:'4to-geometria-rectas',nivelMax:3,titulo:'Rectas: paralelas, perpendiculares y oblicuas',descripcion:'Trazá la recta que te piden por el punto justo y escribila con su símbolo.',icono:'📐',grados:['4to'],ruta:'actividades/4to-geometria-rectas/index.html',version:'1.1.0',
    errores:{CONFUNDE_TIPO:'Trazó otro tipo de recta (paralela en vez de perpendicular, etc.)',INCLINACION:'La inclinación no alcanza (casi paralela o casi perpendicular)',PUNTO_EQUIVOCADO:'La hizo pasar por otro punto',NO_PASA_PUNTO:'No pasa por el punto pedido',NOTACION:'Eligió mal el símbolo (//, ⊥, ∠)'},
    stats:()=>MATE.perfiles.filter(p=>p.grado==='4to').map(p=>{ let r=null; try{ r=JSON.parse(localStorage.getItem('mate.'+p.id+'.4to-geometria-rectas.resumen')||'null'); }catch(e){}
      if(!r||!r.tipos.length) return p.nombre+' todavía no terminó una ronda.';

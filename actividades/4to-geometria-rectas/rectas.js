@@ -1,6 +1,13 @@
 /* Rectas: paralelas, perpendiculares y oblicuas — interfaz.
    ------------------------------------------------------------
    Historial de cambios
+   v1.1.0  (2026-11-23) Modo hoja ("fotocopia", fase 3 del plan)
+     + Botón 📄 Hoja / ✏️ De a una (queda guardado por perfil): una hoja con 3 o 4 consignas encadenadas sobre el mismo
+       tablero, escritas con el símbolo como en la fotocopia ("D ⊥ R por p", "S // D por m").
+     + La referencia de un paso encadenado es la recta que trazó el chico (la suya, no la ideal); se encadena solo sobre
+       paralelas y perpendiculares a R. Las rectas hechas quedan en la hoja y la referencia del paso se resalta.
+     + En la hoja no hay pregunta de notación: leer el símbolo es el ejercicio; si lo confunde, se explica el símbolo.
+     + Eventos con item.modo 'hoja', item.paso y item.encadenada; ?modo=hoja para probar.
    v1.0.0  (2026-11-23) Primera versión (plan_geometria_rectas v1.0, fases 1 y 2)
      + Una recta dada (MAYÚSCULA) y puntos (minúscula): trazar la paralela, la perpendicular o la oblicua por un punto.
      + Dibujar arrastrando; mover desde el medio y girar desde las puntas (dedo y mouse); extensión punteada hasta los bordes.
@@ -11,7 +18,7 @@
    ------------------------------------------------------------ */
 (function () {
   'use strict';
-  var VERSION = '1.0.0', ACT = '4to-geometria-rectas', TITULO = 'Rectas: paralelas, perpendiculares y oblicuas', NIVEL_MAX = 3, TAM = 5;
+  var VERSION = '1.1.0', ACT = '4to-geometria-rectas', TITULO = 'Rectas: paralelas, perpendiculares y oblicuas', NIVEL_MAX = 3, TAM = 5;
   var RC = REF4_RECTAS, UI = REF4_UI, $ = UI.$, esc = UI.esc, NS = 'http://www.w3.org/2000/svg', DIA = 86400000;
 
   var ctx = UI.base({ act: ACT, titulo: TITULO, version: VERSION, nivelMax: NIVEL_MAX });
@@ -31,11 +38,13 @@
     UI.fuegos.parar();
     ctx.reg.iniciarRonda();
     var nivel = +(ctx.debug && ctx.params.get('nivel')) || ctx.reg.estado().nivel || 1;
-    S = { nivel: Math.min(NIVEL_MAX, nivel), idx: 0, ok1: 0, hechos: 0, t0: Date.now(), usados: [] };
+    var modo = (ctx.debug && ctx.params.get('modo')) || ctx.store.get('modo', 'una');
+    S = { nivel: Math.min(NIVEL_MAX, nivel), idx: 0, ok1: 0, hechos: 0, t0: Date.now(), usados: [], modo: modo === 'hoja' ? 'hoja' : 'una', total: TAM, hoja: null, lineas: [] };
     bolsa = RC.bolsa(ctx.az, pesos());
     app.innerHTML = '<div class="ref-panel">' +
-      '<div class="rc-cabeza"><span class="rc-cuenta" id="cuenta"></span><span id="prog"></span><span>Nivel ' + S.nivel + '</span></div>' +
-      '<p class="rc-consigna" id="consigna"></p>' +
+      '<div class="rc-cabeza"><span class="rc-cuenta" id="cuenta"></span><span id="prog"></span><span>Nivel ' + S.nivel + '</span>' +
+      '<button type="button" class="ref-btn rc-modo" id="b-modo">' + (S.modo === 'hoja' ? '✏️ De a una' : '📄 Hoja') + '</button></div>' +
+      '<div class="rc-consigna" id="consigna"></div>' +
       '<p class="rc-ayuda">Arrastrá para dibujar. Movela desde el medio, girala desde las puntas.</p>' +
       '<svg class="rc-tablero" id="tablero" role="img" aria-label="Tablero para trazar la recta"></svg>' +
       '<div class="rc-fb" id="fb" aria-live="polite"></div>' +
@@ -47,6 +56,7 @@
     svg.addEventListener('pointerup', arriba); svg.addEventListener('pointercancel', arriba);
     $('#b-borrar').onclick = function () { if (S.fase !== 'trazar') return; S.linea = null; $('#fb').innerHTML = ''; dibujarNueva(); };
     $('#b-pista').onclick = pista; $('#b-comp').onclick = comprobar; $('#b-sig').onclick = siguiente;
+    $('#b-modo').onclick = function () { ctx.store.set('modo', S.modo === 'hoja' ? 'una' : 'hoja'); if (ctx.debug) ctx.params.delete('modo'); ronda(); };
     vigia = UI.vigilar(ctx, { texto: function () { return S.fase === 'nota' ? 'elegir cómo se escribe' : 'trazar la recta ' + S.ej.nueva.nombre; },
                               elemento: function () { return S.fase === 'nota' ? $('#nota') : svg; } });
     nuevo();
@@ -54,27 +64,39 @@
 
   function nuevo() {
     var r = svg.getBoundingClientRect(), W = Math.max(280, Math.round(r.width)), H = Math.max(240, Math.round(r.height));
-    var tipo = (ctx.debug && ctx.params.get('tipo')) || bolsa.sacar();
-    S.ej = RC.generar(ctx.az, W, H, { nivel: S.nivel, tipo: tipo, usados: S.usados });
-    S.usados = [S.ej.ref.nombre, S.ej.nueva.nombre];
+    if (S.modo === 'hoja') {
+      if (!S.hoja) {   // la hoja se arma una vez: el tablero queda igual en todos los pasos
+        S.hoja = RC.generarHoja(ctx.az, W, H, { nivel: S.nivel, tipoExtra: bolsa.sacar() }); S.lineas = []; S.total = S.hoja.pasos.length;
+        svg.setAttribute('viewBox', '0 0 ' + S.hoja.W + ' ' + S.hoja.H);
+        ctx.log('hoja', S.hoja.pasos.map(RC.consignaHoja).join(' · '), S.hoja.W + '×' + S.hoja.H, 'intentos del generador', S.hoja.intentosGen, S.hoja.recortada ? '(recortada: tablero chico)' : '');
+      }
+      S.ej = RC.pasoHoja(S.hoja, S.idx, S.lineas);
+    } else {
+      var tipo = (ctx.debug && ctx.params.get('tipo')) || bolsa.sacar();
+      S.ej = RC.generar(ctx.az, W, H, { nivel: S.nivel, tipo: tipo, usados: S.usados });
+      S.usados = [S.ej.ref.nombre, S.ej.nueva.nombre];
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    }
     S.linea = null; S.fase = 'trazar'; S.intentos = 0; S.pistas = 0; S.notaInt = 0; S.tItem = Date.now(); S.tq = performance.now(); S.guia = null;
-    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.classList.remove('ok');
+    svg.classList.remove('ok');
     var e = S.ej, txt = { paralela: 'paralela a', perpendicular: 'perpendicular a', oblicua: 'oblicua a' }[e.tipo];
-    $('#consigna').innerHTML = 'Trazá la recta <b>' + esc(e.nueva.nombre) + '</b> ' + txt + ' <b>' + esc(e.ref.nombre) + '</b> que pase por el punto <b>' + esc(e.objetivo.nombre) + '</b>.';
+    if (S.modo === 'hoja') $('#consigna').innerHTML = '<span class="rc-hoja-tit">Trazá las rectas indicadas:</span> ' + S.hoja.pasos.map(function (P, i) {
+      return '<span class="rc-chip' + (i < S.idx ? ' hecho' : i === S.idx ? ' actual' : '') + '">' + (i < S.idx ? '✔ ' : '') + esc(RC.consignaHoja(P)) + '</span>'; }).join(' ');
+    else $('#consigna').innerHTML = 'Trazá la recta <b>' + esc(e.nueva.nombre) + '</b> ' + txt + ' <b>' + esc(e.ref.nombre) + '</b> que pase por el punto <b>' + esc(e.objetivo.nombre) + '</b>.';
     $('#fb').innerHTML = ''; $('#nota').hidden = true; $('#nota').innerHTML = '';
     $('#b-sig').disabled = true; $('#b-comp').disabled = false; $('#b-pista').disabled = false; $('#b-borrar').disabled = false;
     $('#b-sig').classList.remove('main'); $('#b-comp').classList.add('main');
     UI.globo(null); cabeza(); dibujarTodo();
-    ctx.log('ejercicio', e.tipo, 'ángulo', e.angRef, 'punto', e.objetivo.nombre, e.W + '×' + e.H, 'intentos del generador', e.intentosGen);
+    ctx.log('ejercicio', S.modo === 'hoja' ? 'hoja paso ' + (S.idx + 1) + ': ' + RC.consignaHoja(S.hoja.pasos[S.idx]) : e.tipo, 'ángulo', e.angRef, 'punto', e.objetivo.nombre, e.W + '×' + e.H, 'intentos del generador', e.intentosGen);
     debug();
   }
   function cabeza() {
     $('#cuenta').textContent = '✔ ' + S.ok1 + ' / ' + S.hechos;
-    $('#prog').innerHTML = UI.progreso(TAM, S.idx);
+    $('#prog').innerHTML = UI.progreso(S.total, S.idx);
   }
   function debug() {
     if (!ctx.debug) return;
-    UI.debugSet({ nivel: S.nivel, tipo: S.ej.tipo, angRef: S.ej.angRef, objetivo: S.ej.objetivo, linea: S.linea, fase: S.fase });
+    UI.debugSet({ nivel: S.nivel, modo: S.modo, paso: S.modo === 'hoja' ? (S.idx + 1) + '/' + S.total + (S.ej.encadenada ? ' encadenado' : '') : '-', tipo: S.ej.tipo, angRef: S.ej.angRef, objetivo: S.ej.objetivo, linea: S.linea, fase: S.fase });
   }
 
   /* ---------- SVG ---------- */
@@ -86,14 +108,37 @@
     var m = svg.getScreenCTM(), p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; p = p.matrixTransform(m.inverse());
     return { x: Math.max(0, Math.min(S.ej.W, p.x)), y: Math.max(0, Math.min(S.ej.H, p.y)) };
   }
+  /* Etiqueta de una recta ya trazada (hoja): cerca de una punta, del lado que queda más lejos de lo que ya está escrito. */
+  function lugarEtiqueta(s, ocupados) {
+    var d = RC.dist(s.a, s.b) || 1, ux = (s.b.x - s.a.x) / d, uy = (s.b.y - s.a.y) / d, mejor = null, md = -1;
+    [[s.b, -1], [s.a, 1]].forEach(function (f) { [1, -1].forEach(function (lado) {
+      var q = { x: f[0].x + f[1] * ux * 24 - uy * 18 * lado, y: f[0].y + f[1] * uy * 24 + ux * 18 * lado };
+      if (!RC.adentro(q, S.ej.W, S.ej.H, 12)) return;
+      var m = ocupados.reduce(function (a, o) { return Math.min(a, RC.dist(o, q)); }, 999);
+      if (m > md) { md = m; mejor = q; }
+    }); });
+    return mejor || { x: s.b.x - ux * 24, y: s.b.y - uy * 24 };
+  }
   function dibujarTodo() {
     svg.innerHTML = '';
-    var e = S.ej;
+    var e = S.ej, hoja = S.modo === 'hoja', refAct = hoja && !e.encadenada ? ' rc-actual' : '';
     S.gGuia = el('g', {}, svg);
-    el('line', { x1: e.ref.a.x, y1: e.ref.a.y, x2: e.ref.b.x, y2: e.ref.b.y, 'class': 'rc-ref' }, svg);
-    texto(e.ref.nombre, e.ref.etiqueta.x, e.ref.etiqueta.y, 'rc-ref-txt', svg);
-    S.gNueva = el('g', {}, svg);
     S.gRecto = el('g', {}, svg);
+    var R = hoja ? S.hoja.ref : e.ref;
+    el('line', { x1: R.a.x, y1: R.a.y, x2: R.b.x, y2: R.b.y, 'class': 'rc-ref' + refAct }, svg);
+    texto(R.nombre, R.etiqueta.x, R.etiqueta.y, 'rc-ref-txt' + refAct, svg);
+    if (hoja) {   // las rectas que ya trazó, enteras, con su nombre (y el ángulo recto de las perpendiculares)
+      var ocupados = [R.etiqueta].concat(e.puntos.map(function (p) { return { x: p.x + 14, y: p.y - 16 }; }));
+      for (var j = 0; j < S.idx; j++) {
+        var L = S.lineas[j], s = RC.recortar({ x: (L.a.x + L.b.x) / 2, y: (L.a.y + L.b.y) / 2 }, RC.angulo(L.a, L.b), e.W, e.H, 0) || L;
+        var act = e.encadenada && S.hoja.pasos[S.idx].ref === j ? ' rc-actual' : '';
+        el('line', { x1: s.a.x, y1: s.a.y, x2: s.b.x, y2: s.b.y, 'class': 'rc-hecha' + act }, svg);
+        var q = lugarEtiqueta(s, ocupados); ocupados.push(q);
+        texto(S.hoja.pasos[j].nueva.nombre, q.x, q.y, 'rc-hecha-txt' + act, svg);
+        if (S.hoja.pasos[j].tipo === 'perpendicular') marcarRecto(RC.pasoHoja(S.hoja, j, S.lineas), L);
+      }
+    }
+    S.gNueva = el('g', {}, svg);
     S.marcas = {};
     e.puntos.forEach(function (p) {
       S.marcas[p.nombre] = el('circle', { cx: p.x, cy: p.y, r: 6, 'class': 'rc-punto' }, svg);
@@ -123,8 +168,8 @@
     var mx = (G.a.x + G.b.x) / 2, my = (G.a.y + G.b.y) / 2;
     texto('guía', mx, my + (my < S.ej.H / 2 ? 50 : -50), 'rc-guia-txt', g);
   }
-  function marcarRecto() {
-    var L = S.linea, e = S.ej, c = RC.cruce(e.ref.a, e.ref.b, L.a, L.b); if (!c) return;
+  function marcarRecto(e, L) {
+    var c = RC.cruce(e.ref.a, e.ref.b, L.a, L.b); if (!c) return;
     var d = RC.dist(e.ref.a, e.ref.b), ux = (e.ref.b.x - e.ref.a.x) / d, uy = (e.ref.b.y - e.ref.a.y) / d, nx = -uy, ny = ux;
     if ((e.objetivo.x - c.x) * nx + (e.objetivo.y - c.y) * ny < 0) { nx = -nx; ny = -ny; }
     var s = 16, p = function (a, b) { return (c.x + ux * a + nx * b).toFixed(1) + ',' + (c.y + uy * a + ny * b).toFixed(1); };
@@ -180,10 +225,11 @@
     S.intentos++; S.tq = performance.now();
     var resp = r.trazada + (r.puntoOk ? ' por ' + e.objetivo.nombre : r.puntoTocado ? ' por ' + r.puntoTocado : ' sin pasar por el punto');
     ctx.reg.evento({ tipo: 'paso', paso: 'trazar', tema: e.tipo, intento: S.intentos,
-      item: { id: ctx.reg.ctx.ronda + '-' + S.idx, tipo: e.tipo, angRef: e.angRef, punto: e.objetivo.nombre, ref: e.ref.nombre, nueva: e.nueva.nombre },
+      item: itemEv({ angRef: Math.round(e.angRef * 10) / 10, punto: e.objetivo.nombre, ref: e.ref.nombre, nueva: e.nueva.nombre }),
       esperado: e.tipo + ' por ' + e.objetivo.nombre, respuesta: resp + ' (' + Math.round(r.d * 10) / 10 + '°, a ' + Math.round(r.distancia / px(1)) + ' px)',
       ok: r.ok, error: r.error, ms: ms, ayuda: S.pistas ? 'pista' : 'ninguna', pistas: S.pistas });
-    $('#fb').innerHTML = linea(r.dirOk, r.msgDir) + linea(r.puntoOk, r.msgPunto);
+    $('#fb').innerHTML = linea(r.dirOk, r.msgDir) + linea(r.puntoOk, r.msgPunto) +
+      (S.modo === 'hoja' && r.error === 'CONFUNDE_TIPO' ? '<p class="info">' + esc('En ' + RC.consignaHoja(S.hoja.pasos[S.idx]) + ', ' + RC.EXPLICA[e.tipo]) + '</p>' : '');
     if (!r.ok) {
       UI.sonar('mal');
       if (S.intentos >= 2 && !S.pistas) UI.globo('Si querés, tocá 💡 Pista: te muestro la inclinación.', 'tip');
@@ -192,10 +238,22 @@
     UI.sonar('ok'); UI.globo(null);
     if (S.intentos === 1) S.ok1++;
     S.hechos++; cabeza();
-    S.fase = 'nota'; svg.classList.add('ok');
-    if (e.tipo === 'perpendicular') marcarRecto();
+    svg.classList.add('ok');
+    if (e.tipo === 'perpendicular') marcarRecto(e, S.linea);
     $('#b-comp').disabled = true; $('#b-pista').disabled = true; $('#b-borrar').disabled = true;
-    preguntarNotacion(); debug();
+    if (S.modo === 'hoja') {   // en la hoja no se pregunta la notación: la consigna ya venía con el símbolo
+      S.lineas[S.idx] = { a: { x: S.linea.a.x, y: S.linea.a.y }, b: { x: S.linea.b.x, y: S.linea.b.y } };
+      S.fase = 'listo'; $('#fb').innerHTML += '<p class="info">' + esc(RC.EXPLICA[e.tipo]) + '</p>';
+      var sig = $('#b-sig'); sig.disabled = false; sig.classList.add('main'); $('#b-comp').classList.remove('main'); sig.focus();
+      if (S.idx === S.total - 1) UI.celebrar();
+    } else { S.fase = 'nota'; preguntarNotacion(); }
+    debug();
+  }
+  function itemEv(x) {
+    var e = S.ej, it = { id: ctx.reg.ctx.ronda + '-' + S.idx, tipo: e.tipo };
+    if (S.modo === 'hoja') { it.modo = 'hoja'; it.paso = S.idx + 1; it.encadenada = !!e.encadenada; }
+    for (var k in x || {}) it[k] = x[k];
+    return it;
   }
 
   /* ---------- notación ---------- */
@@ -211,7 +269,7 @@
     if (S.fase !== 'nota') return;
     var e = S.ej, t = b.dataset.t, ok = t === e.tipo, ms = Math.round(performance.now() - S.tq);
     S.notaInt++; S.tq = performance.now();
-    ctx.reg.evento({ tipo: 'paso', paso: 'notacion', tema: e.tipo, intento: S.notaInt, item: { id: ctx.reg.ctx.ronda + '-' + S.idx, tipo: e.tipo },
+    ctx.reg.evento({ tipo: 'paso', paso: 'notacion', tema: e.tipo, intento: S.notaInt, item: itemEv(),
       esperado: e.nueva.nombre + ' ' + RC.SIMBOLO[e.tipo] + ' ' + e.ref.nombre, respuesta: b.textContent, ok: ok, error: ok ? null : 'NOTACION', ms: ms, ayuda: 'ninguna' });
     if (!ok) {
       UI.sonar('mal'); b.classList.add('mal'); b.disabled = true;
@@ -236,23 +294,23 @@
     S.guia = RC.guia(e, px(90)); dibujarGuia();
     UI.globo('Copiá la inclinación de la guía naranja y llevala hasta el punto ' + e.objetivo.nombre + '.' +
              (e.tipo === 'oblicua' ? ' Cualquier inclinación sirve, mientras no sea paralela ni perpendicular.' : ''), 'tip');
-    ctx.reg.evento({ tipo: 'paso', paso: 'pista', tema: e.tipo, intento: 0, item: { id: ctx.reg.ctx.ronda + '-' + S.idx, tipo: e.tipo }, ok: true, esperado: '', respuesta: '' });
+    ctx.reg.evento({ tipo: 'paso', paso: 'pista', tema: e.tipo, intento: 0, item: itemEv(), ok: true, esperado: '', respuesta: '' });
   }
 
   /* ---------- siguiente y fin de ronda ---------- */
   function siguiente() {
     if (S.fase !== 'listo') return;
     S.idx++;
-    if (S.idx < TAM) return nuevo();
+    if (S.idx < S.total) return nuevo();
     if (vigia) { vigia.detener(); vigia = null; }
-    var pct = Math.round(100 * S.ok1 / TAM), r = ctx.reg.cerrarRonda(pct, Date.now() - S.t0, false, NIVEL_MAX);
+    var pct = Math.round(100 * S.ok1 / S.total), r = ctx.reg.cerrarRonda(pct, Date.now() - S.t0, false, NIVEL_MAX);
     ctx.store.set('resumen', RC.estadisticas(ctx.reg.eventos()));    // para Estadísticas en Ajustes de padres
     if (r.cambio > 0) UI.logroNivel(r.nivel);
     cabeza();
-    UI.resumen({ estrellas: r.estrellas, pct: pct, extra: S.ok1 + ' de ' + TAM + ' rectas bien a la primera.' }, ronda, function () { MATE.irMenu(); });
+    UI.resumen({ estrellas: r.estrellas, pct: pct, extra: S.ok1 + ' de ' + S.total + ' rectas bien a la primera' + (S.modo === 'hoja' ? ' en la hoja.' : '.') }, ronda, function () { MATE.irMenu(); });
   }
 
-  if (ctx.debug) window.__ref4 = { act: ACT, version: VERSION, estado: function () { return { fase: S.fase, ej: S.ej, linea: S.linea, idx: S.idx }; },
+  if (ctx.debug) window.__ref4 = { act: ACT, version: VERSION, estado: function () { return { modo: S.modo, fase: S.fase, ej: S.ej, linea: S.linea, idx: S.idx, hoja: S.hoja, lineas: S.lineas }; },
     trazar: function (a, b) { S.linea = { a: a, b: b }; dibujarNueva(); }, resolver: function () { S.linea = RC.solucion(S.ej, 160); dibujarNueva(); comprobar(); },
     comprobar: comprobar, siguiente: siguiente, elegir: function (tipo) { var b = document.querySelector('#nota [data-t="' + tipo + '"]'); if (b) elegir(b); } };
 
