@@ -77,7 +77,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - **Panel**: `analisis:'palabras'|'preguntas'` en el registro arma la tabla por ítem en "Registro en la nube".
 - **Inglés** (`1ro-ingles`): oral y con dibujos; voz en inglés propia de la actividad (en-US/en-GB). Para escribir en inglés, `LENGUA1.clasificar(…, {idioma:'en'})` (sin reglas del castellano).
 - **Pruebas:** `node tests/lectoescritura-1ro/run.js` (lectura e inglés con 1000 rondas por nivel y semilla fija).
-- **Dinero** (`1ro-monedas`): `_comun-1ro/dinero.js` (`DINERO`: moneda o billete con un punto por peso, `Recta` = recta + cuadrícula de 10 + cadena, `Balanza`, `menorCantidad`, `formas`) y `dinero.css`; base para las actividades de dinero que siguen (plan y pendientes en `docs/1ro-monedas/`). Pruebas: `node tests/monedas-1ro/run.js`.
+- **Dinero** (`1ro-monedas`): `_comun-1ro/dinero.js` (`DINERO`: moneda o billete con un punto por peso, `Recta` = recta + cuadrícula de 10 + cadena, `Balanza`, `menorCantidad`, `formas`, `canje`; billetes hasta $100) y `dinero.css`; base para las actividades de dinero que siguen (plan y pendientes en `docs/1ro-monedas/`). Pruebas: `node tests/monedas-1ro/run.js`.
 
 ## Rama de inglés (`_comun-ingles/`): convenciones
 

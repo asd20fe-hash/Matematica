@@ -2,7 +2,7 @@
 <!--
   ============================================================
   Saltos con monedas (1er grado)
-  Versión: v1.0.0 (2026-11-23). El historial de cambios está al principio de monedas.js
+  Versión: v1.1.0 (2026-11-23). El historial de cambios está al principio de monedas.js
   ============================================================
 -->
 <html lang="es">
@@ -37,6 +37,9 @@ body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:trans
 .mo-etiqueta{display:flex;align-items:center;gap:10px;background:#fff;color:#111;border-radius:14px;padding:8px 18px 8px 36px;font-size:40px;font-weight:900;
   clip-path:polygon(14% 0,100% 0,100% 100%,14% 100%,0 50%);box-shadow:var(--shadow)}
 .mo-falta{font-size:24px;font-weight:800;color:var(--accent)}
+.mo-num{display:inline-block;background:#fff;color:#111;border-radius:12px;padding:0 12px;font-size:1.5em;box-shadow:var(--shadow)}
+.mo-preg small{font-size:.7em;color:var(--muted)}
+.mo-canje{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:center}
 .mo-monedero{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;padding:10px;background:var(--din-monedero);border:2px solid var(--din-monedero-borde);border-radius:16px;margin:8px 0}
 .mo-monedero button{background:none;border:0;padding:0;cursor:pointer;min-height:52px}
 .mo-monedero button:active{transform:scale(.9)}
@@ -77,6 +80,7 @@ body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:trans
     <button data-t="dos" role="tab">🪙 La de $2</button>
     <button data-t="saltos" role="tab">🐸 Saltos</button>
     <button data-t="pagar" role="tab">🛒 Pagar</button>
+    <button data-t="menos" role="tab">💵 Con menos</button>
     <button data-t="desafio" role="tab">⭐ Desafío</button>
   </nav>
 
@@ -147,7 +151,26 @@ body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:trans
     </div>
   </section>
 
-  <!-- 4 · Desafío -->
+  <!-- 4 · Con menos: llegar a un número con la menor cantidad de billetes y monedas -->
+  <section class="mo-sec" id="sec-menos" hidden>
+    <div class="l1-panel">
+      <div class="l1-fila mo-seg" id="men-seg" style="justify-content:space-between"><span>Hasta:</span><span id="men-seg-fin" style="flex:1"></span><span class="mo-est" id="men-est">⭐ 0</span></div>
+      <div class="mo-preg">Llegá a <span class="mo-num" id="men-obj">$37</span><br><small>con la menor cantidad de billetes y monedas</small></div>
+      <div class="mo-paytop"><div class="mo-falta" id="men-falta"></div></div>
+      <div class="mo-monedero" id="men-monedero"></div>
+      <div class="mo-bandeja" id="men-bandeja"></div>
+      <div class="l1-fila">
+        <button class="l1-btn" id="men-sacar">↩ Sacar la última</button>
+        <button class="l1-btn" id="men-vaciar">Vaciar</button>
+        <button class="l1-btn main" id="men-canje" hidden>🔄 Cambiar</button>
+        <button class="l1-btn main" id="men-otro">Otro número ➜</button>
+      </div>
+      <div class="l1-msg" id="men-msg" aria-live="polite"></div>
+      <div id="men-recta"></div>
+    </div>
+  </section>
+
+  <!-- 5 · Desafío -->
   <section class="mo-sec" id="sec-desafio" hidden>
     <div class="l1-panel">
       <div class="l1-fila mo-seg" id="des-seg" style="justify-content:space-between"><span>Saltos de:</span><span id="des-seg-fin" style="flex:1"></span><span class="mo-est" id="des-est">⭐ 0</span></div>

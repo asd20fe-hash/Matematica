@@ -13,13 +13,13 @@ MATE.actividades=[
      DIECES_SIN_CERO:'Sumó los dieces pero sin el cero (5 en vez de 50)',SUMA_DIECES:'Error al sumar los dieces',SUMA_UNOS:'Error al sumar los unos',JUNTA_MAL:'Error al juntar dieces y unos en el resultado',
      RESTA_UNOS_EN_VEZ_DE_DIECES:'Restó unos en vez de dieces (2 en vez de 20)',SUMA_EN_VEZ_DE_RESTA:'Sumó en vez de restar',CAMBIA_UNIDAD:'Cambió los unos al restar dieces',FILAS_MAL:'Subió una cantidad de filas equivocada',CUENTA_MAL:'Contó mal para atrás'}},
   // Dinero de 1ro: monedas y billetes como saltos en la recta (código común en _comun-1ro/dinero.js).
-  {id:'1ro-monedas',nivelMax:3,titulo:'Saltos con monedas',descripcion:'La moneda de $2 vale 2: saltá, pagá justo y contá la plata.',icono:'🪙',grados:['1ro'],ruta:'actividades/1ro-monedas/index.html',version:'1.0.0',
+  {id:'1ro-monedas',nivelMax:3,titulo:'Saltos con monedas',descripcion:'La moneda de $2 vale 2: saltá, pagá justo, contá la plata y llegá con la menor cantidad de billetes.',icono:'🪙',grados:['1ro'],ruta:'actividades/1ro-monedas/index.html',version:'1.1.0',
    errores:{CUENTA_MONEDAS:'Contó las monedas como si cada una valiera $1 (no la plata)',CUENTA_PESOS:'Dijo la plata en vez de cuántas monedas',DE_A_UNO:'Siguió contando de a 1 en vez de saltar',
      SALTO_DE_MAS:'Un salto de más o de menos',CUENTA_POR_UNO:'Contó una moneda de más o de menos',PONE_TOTAL:'Puso el total en vez de lo que falta',PONE_LO_QUE_TIENE:'Puso lo que ya tenía en vez de lo que falta',
-     TE_PASAS:'Al pagar, quiso poner una moneda que se pasaba del precio',OTRO:'Otra respuesta'},
+     TE_PASAS:'Al pagar, quiso poner una moneda que se pasaba del precio',NO_MINIMA:'Llegó al número pero no con la menor cantidad de billetes y monedas',OTRO:'Otra respuesta'},
    stats:()=>MATE.perfiles.filter(p=>p.grado==='1ro').map(p=>{ let ev=[]; try{ ev=JSON.parse(localStorage.getItem('mate.'+p.id+'.1ro-monedas.eventos')||'[]'); }catch(e){}
-     const d=ev.filter(e=>e.tipo==='paso'&&e.tema==='desafio'&&e.intento===1); if(!d.length) return p.nombre+' todavía no hizo el Desafío de monedas.';
-     const T={cuantas:'cuántas monedas',cuanto:'cuánta plata',seguir:'seguir contando',falta:'cuánto falta',quien:'quién tiene más'},por={},err={};
+     const d=ev.filter(e=>e.tipo==='paso'&&(e.tema==='desafio'||e.tema==='menos')&&e.intento===1); if(!d.length) return p.nombre+' todavía no hizo el Desafío ni "Con menos".';
+     const T={menos:'con la menor cantidad',cuantas:'cuántas monedas',cuanto:'cuánta plata',seguir:'seguir contando',falta:'cuánto falta',quien:'quién tiene más'},por={},err={};
      d.forEach(e=>{ const t=por[e.paso]=por[e.paso]||{n:0,ok:0}; t.n++; if(e.ok) t.ok++; else err[e.error]=(err[e.error]||0)+1; });
      const top=Object.keys(err).sort((a,b)=>err[b]-err[a])[0];
      return p.nombre+': '+Object.keys(por).map(k=>(T[k]||k)+' '+Math.round(100*por[k].ok/por[k].n)+'% a la primera ('+por[k].n+')').join('; ')+(top?'. Lo que más le cuesta: '+(MATE.actividades.find(a=>a.id==='1ro-monedas').errores[top]||top).toLowerCase()+' ('+err[top]+').':'.'); }).join(' ')},

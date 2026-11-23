@@ -19,13 +19,37 @@ prueba('resumen de lo pagado, de mayor a menor', function () {
 });
 prueba('menor cantidad: $20 con monedas de $2 son 10; $27 con todas son 4', function () {
   assert.strictEqual(D.menorCantidad(20, [2]).length, 10);
-  assert.deepStrictEqual(D.menorCantidad(27, D.VALORES), [10, 10, 5, 2]);
+  assert.deepStrictEqual(D.menorCantidad(27, [1, 2, 5, 10]), [10, 10, 5, 2]);
+  assert.deepStrictEqual(D.menorCantidad(87, D.VALORES), [50, 20, 10, 5, 2]);
   assert.strictEqual(D.menorCantidad(7, [2]), null);
-  for (var p = 1; p <= 30; p++) assert.strictEqual(D.suma(D.menorCantidad(p, D.VALORES)), p);
+  for (var p = 1; p <= 100; p++) assert.strictEqual(D.suma(D.menorCantidad(p, D.VALORES)), p);
 });
 prueba('formas de juntar $5 con $1 y $2 son 3', function () {
   assert.deepStrictEqual(D.formas(5, [1, 2]).map(D.clave).sort(), ['1+1+1+1+1', '2+1+1+1', '2+2+1'].sort());
   assert.strictEqual(D.formas(2, [1]).length, 1);
+});
+prueba('canje: $5 + $5 → $10, $2 + $2 + $1 → $5, y nada si ya es la menor cantidad', function () {
+  assert.deepStrictEqual(D.canje([10, 5, 5], D.VALORES), { quitar: [10, 5, 5], poner: 20 });
+  assert.deepStrictEqual(D.canje([5, 5], [1, 2, 5, 10]), { quitar: [5, 5], poner: 10 });
+  assert.deepStrictEqual(D.canje([2, 2, 1], [1, 2, 5, 10]), { quitar: [2, 2, 1], poner: 5 });
+  assert.strictEqual(D.canje([20, 5, 2], D.VALORES), null);
+});
+prueba('con menos: canjear hasta que no se pueda llega siempre a la menor cantidad (1000 números por rango)', function () {
+  var az = AZ.crear(99);
+  [20, 50, 100].forEach(function (h) {
+    var val = M.MENOS[h], ant = null;
+    for (var i = 0; i < 1000; i++) {
+      var x = M.objetivoMenos(h, az, ant), min = M.minimo(x, val); ant = x;
+      assert.ok(x >= 6 && x <= h && val.indexOf(x) < 0 && min.length >= 3, h + ': ' + x);
+      assert.strictEqual(D.suma(min), x); assert.strictEqual(min.length, D.menorCantidad(x, val).length);
+      var l = []; for (var k = 0; k < x; k++) l.push(1);       // peor caso: todo con monedas de $1
+      for (var c = D.canje(l, val), g = 0; c && g < 200; c = D.canje(l, val), g++) {
+        c.quitar.forEach(function (q) { l.splice(l.indexOf(q), 1); }); l.push(c.poner);
+        assert.strictEqual(D.suma(l), x);
+      }
+      assert.strictEqual(l.length, min.length, h + ': ' + x + ' quedó ' + l.join('+'));
+    }
+  });
 });
 prueba('la pregunta de la tarea: $20 con monedas de $2 → 10', function () {
   var it = M.ronda(1, 2, AZ.crear(1), true)[0];

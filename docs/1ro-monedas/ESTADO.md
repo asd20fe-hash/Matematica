@@ -24,6 +24,11 @@ Plan original: `PLAN_dinero_y_saltos_v1.0.md` (estaba en `incoming/`). Prototipo
 - [x] D `desafio`: cuantas, cuanto, seguir, falta (nuevo) y quien tiene más (nuevo, con trampa de más monedas y menos plata).
 - [x] Registro de intentos + `stats()` en Ajustes de padres. Pruebas: `node tests/monedas-1ro/run.js`.
 
+## Hecho (v1.1.0, 23/11/2026)
+
+- [x] Billetes de $20, $50 y $100 (barritas de 10 puntos) y pestaña "💵 Con menos": llegar a un número hasta 20/50/100
+  con la menor cantidad, con canje como ayuda (`DINERO.canje`). Pagar "Todas" suma el de $20.
+
 ## Pendiente (en este orden)
 
 - [ ] E `decenas`: billetes de $10 y monedas de $1 → la cifra de las decenas y la de las unidades (libro pág. 92).

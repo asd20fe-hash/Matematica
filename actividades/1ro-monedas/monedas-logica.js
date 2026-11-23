@@ -1,5 +1,7 @@
 /* Saltos con monedas (1ro) — lógica pura del Desafío. window.MONEDAS1 (UMD: también require en node).
-   Versión 1.0.0 (2026-11-23). Generador de preguntas, ronda y clasificador de errores; sin DOM.
+   Versión 1.1.0 (2026-11-23). Generador de preguntas, ronda y clasificador de errores; sin DOM.
+   v1.1.0: MENOS (qué billetes y monedas hay según hasta dónde llega) y objetivoMenos (número para llegar con la menor
+   cantidad: nunca un valor que sea una sola pieza y con al menos 3 piezas en la mejor forma, para que haya que pensar).
    Tipos: cuantas (¿cuántas monedas de $s para $X?), cuanto (tengo n monedas de $s, ¿cuánta plata?), seguir (seguí contando
    de a s), falta ($2 + $2 + __ = $8) y quien (¿quién tiene más plata?, con la trampa de más monedas pero menos plata).
    Cada ítem trae su ayuda como saltos: {inicio, lista, desde?} (la ayuda nunca da la respuesta en seco, la muestra saltando). */
@@ -22,7 +24,21 @@
     CUENTA_POR_UNO: 'Contó una moneda de más o de menos',
     PONE_TOTAL: 'Puso el total en vez de lo que falta',
     PONE_LO_QUE_TIENE: 'Puso lo que ya tenía en vez de lo que falta',
+    NO_MINIMA: 'Llegó al número pero no con la menor cantidad de billetes y monedas',
     OTRO: 'Otra respuesta'
+  };
+  // "Con menos": hasta 20 con $1, $2, $5 y $10; hasta 50 suma el de $20; hasta 100 suma $50 y $100.
+  M.MENOS = { 20: [1, 2, 5, 10], 50: [1, 2, 5, 10, 20], 100: [1, 2, 5, 10, 20, 50, 100] };
+  M.minimo = function (x, valores) {
+    var v = valores.slice().sort(function (a, b) { return b - a; }), out = [];
+    v.forEach(function (c) { while (x >= c) { out.push(c); x -= c; } });
+    return out;
+  };
+  M.objetivoMenos = function (hasta, az, anterior) {
+    var val = M.MENOS[hasta], x, g = 0;
+    do { x = az.entero(Math.max(6, Math.floor(hasta / 3)), hasta === 100 ? 99 : hasta); g++; }
+    while ((x === anterior || val.indexOf(x) >= 0 || M.minimo(x, val).length < 3) && g < 100);
+    return x;
   };
   M.tipos = function (nivel) { return nivel <= 1 ? ['cuantas', 'cuanto', 'seguir'] : ['cuantas', 'cuanto', 'seguir', 'falta', 'quien']; };
   var rep = function (v, n) { var l = []; for (var i = 0; i < n; i++) l.push(v); return l; };

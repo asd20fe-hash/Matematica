@@ -1,6 +1,12 @@
 /* Saltos con monedas (1ro) — interfaz.
    ------------------------------------------------------------
    Historial de cambios
+   v1.1.0  (2026-11-23) Billetes de $20, $50 y $100 y "Con menos"
+     + Pestaña nueva "💵 Con menos": llegar a un número con la menor cantidad de billetes y monedas. "Hasta 20" con $1, $2,
+       $5 y $10; "hasta 50" suma $20; "hasta 100" suma $50 y $100 (la cuadrícula queda como la tabla del 100).
+     + Si llega con más piezas de las necesarias, la ayuda propone un canje concreto ("Cambiá $5 + $5 por un billete de
+       $10") con el botón 🔄 Cambiar, hasta llegar a la menor cantidad. ⭐ si lo logra a la primera.
+     + Pagar con "Todas" suma el billete de $20. Evento paso 'menos' con NO_MINIMA cuando no fue la menor cantidad.
    v1.0.0  (2026-11-23) Primera versión (sale del prototipo saltos_monedas v1.0; plan en docs/1ro-monedas/)
      + Para que Luz vea que la moneda de $2 vale el doble que la de $1: cada moneda tiene tantos puntos como vale y
        cada moneda es un salto en la recta, con la cuadrícula de 10 por fila (como la tabla del 100) y la cadena 0 → 2 → 4.
@@ -16,7 +22,7 @@
    ------------------------------------------------------------ */
 (function () {
   'use strict';
-  var VERSION = '1.0.0', ACT = '1ro-monedas';
+  var VERSION = '1.1.0', ACT = '1ro-monedas';
   var D = DINERO, MO = MONEDAS1, UI = REF4_UI;
   var ctx = UI1.base({ act: ACT, version: VERSION, titulo: 'Saltos con monedas' });
   if (!ctx) return;
@@ -26,7 +32,7 @@
   var decir = function (t) { UI1.hablar(String(t).replace(/<[^>]*>/g, ' ').replace(/\$(\d+)/g, '$1 pesos').replace(/__/g, 'cuánto').replace(/[→…]/g, ' ')); };
   var callar = function () { if (window.speechSynthesis) speechSynthesis.cancel(); };
   var estrellas = ctx.store.get('estrellas', 0);
-  var sumarEstrella = function (n) { estrellas += n || 1; ctx.store.set('estrellas', estrellas); $('#des-est').textContent = '⭐ ' + estrellas; };
+  var sumarEstrella = function (n) { estrellas += n || 1; ctx.store.set('estrellas', estrellas); $('#des-est').textContent = $('#men-est').textContent = '⭐ ' + estrellas; };
   var paso = function (o) { return ctx.reg.evento(Object.assign({ tipo: 'paso' }, o)); };
 
   /* ==== PESTAÑAS ==== */
@@ -37,6 +43,7 @@
     [].forEach.call(document.querySelectorAll('.mo-sec'), function (s) { s.hidden = s.id !== 'sec-' + t; });
     if (t === 'desafio' && !R) nuevaRonda();
     if (t === 'saltos') recSal.centrar(recSal.total);
+    if (t === 'menos') decir('Llegá a $' + men.obj + ' con la menor cantidad');
   }
   $('#tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) verTab(b.dataset.t); };
   function seg(cont, valores, actual, alElegir, antesDe) {
@@ -119,6 +126,7 @@
   armarSal();
 
   /* ==== 3 · PAGAR JUSTO ==== */
+  var PAG_TODAS = [1, 2, 5, 10, 20];
   var PRODS = ['🧸', '🧃', '🍭', '✏️', '🍎', '🎈', '📒', '🍪', '🧩', '🚗'];
   var pag = { modo: 'dos', precio: 20, pagado: false, pasadas: 0, t0: Date.now() };
   var recPag = new D.Recta($('#pag-recta'), { N: 20, saltarin: '🐰' });
@@ -130,7 +138,7 @@
     pag.precio = p; pag.pagado = false; pag.pasadas = 0; pag.t0 = Date.now();
     $('#pag-precio').textContent = '$' + p; $('#pag-prod').textContent = PRODS[rand(0, PRODS.length - 1)];
     [].forEach.call(document.querySelectorAll('#pag-modo [data-m]'), function (b) { b.classList.toggle('on', b.dataset.m === pag.modo); });
-    $('#pag-monedero').innerHTML = (pag.modo === 'dos' ? [2] : D.VALORES).map(function (v) { return '<button data-v="' + v + '" aria-label="' + D.nombre(v, 1) + '">' + D.html(v, 66) + '</button>'; }).join('');
+    $('#pag-monedero').innerHTML = (pag.modo === 'dos' ? [2] : PAG_TODAS).map(function (v) { return '<button data-v="' + v + '" aria-label="' + D.nombre(v, 1) + '">' + D.html(v, 66) + '</button>'; }).join('');
     recPag.setN(pag.modo === 'dos' ? 20 : 30, 0); actPag();
     if (tab === 'pagar') decir('Cuesta $' + p);
   }
@@ -140,7 +148,7 @@
     $('#pag-falta').textContent = falta > 0 ? 'Te falta $' + falta : '¡Justo!';
     var m = $('#pag-msg');
     if (falta === 0 && recPag.items.length) {
-      var res = D.resumen(recPag.items), min = D.menorCantidad(pag.precio, pag.modo === 'dos' ? [2] : D.VALORES), esMin = min && recPag.items.length === min.length;
+      var res = D.resumen(recPag.items), min = D.menorCantidad(pag.precio, pag.modo === 'dos' ? [2] : PAG_TODAS), esMin = min && recPag.items.length === min.length;
       m.className = 'l1-msg ok';
       m.innerHTML = '¡Pagaste justo $' + pag.precio + '! 🎉<br>Usaste ' + res + (pag.modo === 'todas' ? (esMin ? '<br>⭐ ¡Con la menor cantidad de monedas!' : '<br><small>Se puede con ' + min.length + (min.length === 1 ? ' sola' : '') + '. ¿Probás con menos?</small>') : '');
       if (!pag.pagado) {
@@ -173,7 +181,75 @@
   [].forEach.call(document.querySelectorAll('#pag-modo [data-m]'), function (b) { b.onclick = function () { if (pag.modo !== b.dataset.m) { pag.modo = b.dataset.m; nuevoPrecio(false); } }; });
   nuevoPrecio(true);
 
-  /* ==== 4 · DESAFÍO ==== */
+  /* ==== 4 · CON MENOS: llegar a un número con la menor cantidad de billetes y monedas ==== */
+  var men = { hasta: ctx.store.get('menosHasta', 20), obj: 0, val: [], min: [], intento: 1, t0: 0, listo: false, canje: null };
+  if (!MO.MENOS[men.hasta]) men.hasta = 20;
+  var recMen = new D.Recta($('#men-recta'), { N: 20, saltarin: '🐿️' });
+  seg($('#men-seg'), [20, 50, 100], men.hasta, function (v) { men.hasta = v; ctx.store.set('menosHasta', v); nuevoMenos(); }, $('#men-seg-fin'));
+  $('#men-est').textContent = '⭐ ' + estrellas;
+  function nuevoMenos() {
+    men.val = MO.MENOS[men.hasta]; men.obj = MO.objetivoMenos(men.hasta, ctx.az, men.obj); men.min = MO.minimo(men.obj, men.val);
+    men.intento = 1; men.t0 = Date.now(); men.listo = false; men.canje = null;
+    $('#men-obj').textContent = '$' + men.obj;
+    $('#men-monedero').innerHTML = men.val.map(function (v) { return '<button data-v="' + v + '" aria-label="' + D.nombre(v, 1) + '">' + D.html(v, D.esBillete(v) ? 52 : 58) + '</button>'; }).join('');
+    recMen.setN(men.hasta, 0); actMenos();
+    if (tab === 'menos') decir('Llegá a $' + men.obj + ' con la menor cantidad');
+    if (ctx.debug) ctx.log('con menos', men.obj, 'mínimo', men.min.join('+'));
+  }
+  function actMenos() {
+    var l = recMen.items, tot = recMen.total, falta = men.obj - tot, a = 0, m = $('#men-msg');
+    $('#men-bandeja').innerHTML = l.map(function (v, i) { a += v; return '<div class="slot">' + D.html(v, D.esBillete(v) ? 40 : 44, i === l.length - 1 ? 'din-pop' : '') + '<small>$' + a + '</small></div>'; }).join('') || '<span style="color:var(--muted);align-self:center">Acá van los billetes y las monedas</span>';
+    $('#men-falta').textContent = l.length ? (falta > 0 ? 'Llevás $' + tot + ' · te falta $' + falta : '¡Llegaste a $' + men.obj + '!') : '';
+    $('#men-canje').hidden = true; men.canje = null;
+    if (falta > 0 || !l.length) { m.className = 'l1-msg'; m.textContent = l.length ? '' : 'Tocá los billetes y las monedas.'; return; }
+    var esMin = l.length === men.min.length, primera = men.intento === 1;
+    if (esMin) {
+      m.className = 'l1-msg ok';
+      m.innerHTML = '¡Con la menor cantidad! 🎉<br>' + l.length + (l.length === 1 ? ' pieza: ' : ' piezas: ') + D.resumen(l);
+      if (!men.listo) {
+        men.listo = true; if (primera) sumarEstrella();
+        paso({ tema: 'menos', paso: 'menos', intento: men.intento, item: { objetivo: men.obj, hasta: men.hasta, minima: men.min.length }, esperado: D.clave(men.min), respuesta: D.clave(l), ok: true, error: null, ms: Date.now() - men.t0, ayuda: primera ? 'ninguna' : 'canje' });
+        setTimeout(function () { D.confeti(); decir('¡Muy bien! Con ' + l.length + ' nomás'); }, 450);
+      }
+      return;
+    }
+    // Llegó, pero se puede con menos: un canje concreto que deja menos piezas.
+    men.canje = D.canje(l, men.val);
+    // Se registra solo cuando llegó tocando ella (no cada paso intermedio de los canjes).
+    if (!men.porCanje) { paso({ tema: 'menos', paso: 'menos', intento: men.intento, item: { objetivo: men.obj, hasta: men.hasta, minima: men.min.length, usadas: l.length }, esperado: D.clave(men.min), respuesta: D.clave(l), ok: false, error: 'NO_MINIMA', ms: Date.now() - men.t0, ayuda: men.intento === 1 ? 'ninguna' : 'canje' }); men.intento++; }
+    men.porCanje = false;
+    m.className = 'l1-msg mal';
+    m.innerHTML = 'Llegaste con ' + l.length + '. ¡Se puede con menos! 💡' + (men.canje ? '<br><span class="mo-canje">Cambiá ' + men.canje.quitar.map(function (v) { return D.html(v, 30); }).join(' + ') + ' por ' + D.html(men.canje.poner, 30) + '</span>' : '');
+    $('#men-canje').hidden = !men.canje;
+    D.beep(300, 0.2); decir('Llegaste. ¡Pero se puede con menos!');
+  }
+  $('#men-monedero').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var v = +b.dataset.v, tot = recMen.total;
+    if (tot === men.obj) return;
+    if (tot + v > men.obj) {
+      $('#men-msg').className = 'l1-msg mal'; $('#men-msg').textContent = 'Con ese te pasás: serían $' + (tot + v) + ' y tenés que llegar a $' + men.obj + '.';
+      var mo = $('#men-monedero'); mo.classList.remove('mo-sacude'); void mo.offsetWidth; mo.classList.add('mo-sacude');
+      D.beep(180, 0.25); decir('Te pasás');
+      paso({ tema: 'menos', paso: 'menos_pasa', intento: 0, item: { objetivo: men.obj, llevaba: tot, moneda: v }, esperado: men.obj, respuesta: tot + v, ok: false, error: 'TE_PASAS', ms: Date.now() - men.t0, ayuda: 'ninguna' });
+      return;
+    }
+    recMen.add(v).then(function () { D.beep(440 + recMen.total * 6); if (recMen.total !== men.obj) decir(recMen.total); });
+    actMenos();
+  };
+  // Canje: saca las piezas chicas y pone la grande (la recta se rearma con los saltos nuevos, de mayor a menor).
+  $('#men-canje').onclick = function () {
+    var c = men.canje; if (!c) return;
+    var l = recMen.items.slice(); c.quitar.forEach(function (q) { l.splice(l.lastIndexOf(q), 1); }); l.push(c.poner);
+    l.sort(function (a, b) { return b - a; });
+    recMen.items = l; recMen.pintar(false); D.beep(660, 0.15); men.porCanje = true; actMenos();
+  };
+  $('#men-sacar').onclick = function () { recMen.pop(); actMenos(); D.beep(300); };
+  $('#men-vaciar').onclick = function () { recMen.reset(); actMenos(); };
+  $('#men-otro').onclick = function () { nuevoMenos(); };
+  nuevoMenos();
+
+  /* ==== 5 · DESAFÍO ==== */
   var desS = ctx.store.get('salto', 2), R = null, primeraRonda = true, tokAyuda = 0;
   if (MO.SALTOS.indexOf(desS) < 0) desS = 2;
   var recDes = new D.Recta($('#des-recta'), { N: 20, saltarin: '🦘' });
@@ -295,5 +371,5 @@
   };
 
   verTab(tab);
-  if (ctx.debug) window.__monedas = { ctx: ctx, R: function () { return R; }, recSal: recSal, recPag: recPag, recDes: recDes };
+  if (ctx.debug) window.__monedas = { ctx: ctx, R: function () { return R; }, recSal: recSal, recPag: recPag, recDes: recDes, recMen: recMen, men: men };
 })();

@@ -1,4 +1,4 @@
-/* Dinero de 1ro — estilos de monedas, billetes, recta, cuadrícula y balanza (v1.0.0, 2026-11-23).
+/* Dinero de 1ro — estilos de monedas, billetes, recta, cuadrícula y balanza (v1.1.0, 2026-11-23: billetes de $20, $50 y $100 con barritas de 10).
    Colores fijos de cada moneda ($1 ámbar, $2 turquesa, $5 violeta, $10 verde) y el resto con variables, en claro y oscuro. */
 :root{
   --c1:#f5b301; --c2:#2ec4b6; --c5:#b07cf0; --c10:#5cc96b;
@@ -24,12 +24,17 @@
 .din-1{background:radial-gradient(circle at 35% 30%,#ffe9a0,var(--c1))}
 .din-2{background:radial-gradient(circle at 35% 30%,#c8f7f1,var(--c2))}
 .din-5{background:radial-gradient(circle at 35% 30%,#ead9ff,var(--c5))}
-.din-10,.din-20{background:linear-gradient(135deg,#bdf0b8,var(--c10))}
+.din-10{background:linear-gradient(135deg,#bdf0b8,var(--c10))}
+.din-20{background:linear-gradient(135deg,#ffd2cc,#ff7a6b)}
+.din-50{background:linear-gradient(135deg,#cfe0ff,#5b8def)}
+.din-100{background:linear-gradient(135deg,#ffd6ee,#e879b9)}
 .din-puntos{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:72%;margin-top:3px}
 .billete .din-puntos{max-width:62%}
 .din-puntos i{width:calc(var(--s)*.13);height:calc(var(--s)*.13);border-radius:50%;background:rgba(0,0,0,.55)}
-.din-5 .din-puntos i,.din-10 .din-puntos i{width:calc(var(--s)*.09);height:calc(var(--s)*.09)}
-.din-20 .din-puntos i{width:calc(var(--s)*.06);height:calc(var(--s)*.06);gap:1px}
+.din-5 .din-puntos i{width:calc(var(--s)*.09);height:calc(var(--s)*.09)}
+/* billetes: una barrita de 10 puntos por cada $10 (como una fila de la tabla del 100) */
+.billete .din-puntos{max-width:80%;gap:1px;flex-wrap:nowrap}
+.din-puntos i.d{width:calc(var(--s)*.075);height:calc(var(--s)*.5);border-radius:2px;background:radial-gradient(circle,rgba(0,0,0,.6) 42%,transparent 48%) 0 0/100% 10%}
 .din-ctxt{font-weight:800;fill:#111;font-family:var(--font)}
 .din-pop{animation:din-pop .35s}
 @keyframes din-pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}

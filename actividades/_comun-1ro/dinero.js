@@ -1,6 +1,11 @@
 /* Dinero de 1ro — monedas, billetes y saltos en la recta. window.DINERO (UMD: en node solo la parte pura).
-   Versión 1.0.0 (2026-11-23). Sale del prototipo saltos_monedas v1.0 (docs/1ro-monedas/PLAN_dinero_y_saltos_v1.0.md).
+   Versión 1.1.0 (2026-11-23). Sale del prototipo saltos_monedas v1.0 (docs/1ro-monedas/PLAN_dinero_y_saltos_v1.0.md).
    Historial de cambios
+   v1.1.0  (2026-11-23) Billetes de $20, $50 y $100
+     + VALORES = 1, 2, 5, 10, 20, 50, 100. Los billetes muestran barritas de 10 puntos (como las filas de la tabla del
+       100): $10 una barrita, $20 dos, $100 diez. Colores: $20 coral, $50 azul, $100 rosa.
+     + canje(lista, valores): un cambio que deja menos piezas ($5 + $5 → $10), para la ayuda de "menor cantidad".
+     + Recta hasta 100 (9 px por número, números de a 10).
    v1.0.0  (2026-11-23) Primera versión
      + Parte pura: COLOR, VALORES, nombre(v, n), contar(lista), resumen(lista), menorCantidad(precio, valores), formas(total, valores).
      + Con DOM: html(v, tam, clase) (moneda o billete con tantos puntos como vale), svg(x, y, r, v), Recta (recta numérica
@@ -14,8 +19,8 @@
 })(typeof window !== 'undefined' ? window : this, function (root) {
   'use strict';
   var D = {};
-  D.VALORES = [1, 2, 5, 10];
-  D.COLOR = { 1: '#f5b301', 2: '#2ec4b6', 5: '#b07cf0', 10: '#5cc96b', 20: '#5cc96b' };
+  D.VALORES = [1, 2, 5, 10, 20, 50, 100];
+  D.COLOR = { 1: '#f5b301', 2: '#2ec4b6', 5: '#b07cf0', 10: '#5cc96b', 20: '#ff7a6b', 50: '#5b8def', 100: '#e879b9' };
   D.esBillete = function (v) { return v >= 10; };
 
   /* ---------- parte pura ---------- */
@@ -45,6 +50,21 @@
     })(0, total, []);
     return out;
   };
+  // Un canje que deja menos piezas: varias monedas/billetes de lo pagado que suman justo otro valor más grande.
+  // Devuelve {quitar:[...], poner:v} (el más grande posible) o null si ya es la menor cantidad.
+  D.canje = function (lista, valores) {
+    var v = valores.slice().sort(function (a, b) { return b - a; });
+    for (var i = 0; i < v.length; i++) {
+      var chicas = lista.filter(function (x) { return x < v[i]; }).sort(function (a, b) { return b - a; }), sol = null;
+      (function rec(k, r, act) {
+        if (sol) return;
+        if (r === 0) { if (act.length >= 2) sol = act.slice(); return; }
+        for (var j = k; j < chicas.length; j++) { if (j > k && chicas[j] === chicas[j - 1]) continue; if (chicas[j] <= r) { act.push(chicas[j]); rec(j + 1, r - chicas[j], act); act.pop(); } }
+      })(0, v[i], []);
+      if (sol) return { quitar: sol, poner: v[i] };
+    }
+    return null;
+  };
   D.clave = function (l) { return l.slice().sort(function (a, b) { return b - a; }).join('+'); };
 
   if (typeof document === 'undefined') return D;
@@ -53,7 +73,7 @@
   // Moneda (redonda) o billete (rectangular) con su valor y un punto por cada peso.
   D.html = function (v, tam, clase) {
     return '<span class="din din-' + v + ' ' + (D.esBillete(v) ? 'billete' : 'moneda') + ' ' + (clase || '') + '" style="--s:' + (tam || 56) + 'px" aria-label="' + D.nombre(v, 1) + '">' +
-      '<b>$' + v + '</b><span class="din-puntos">' + new Array(v + 1).join('<i></i>') + '</span></span>';
+      '<b>$' + v + '</b><span class="din-puntos">' + (D.esBillete(v) ? new Array(v / 10 + 1).join('<i class="d"></i>') : new Array(v + 1).join('<i></i>')) + '</span></span>';
   };
   D.svg = function (x, y, r, v) {
     var s = '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + D.COLOR[v] + '" stroke="rgba(255,255,255,.5)" stroke-width="3"/>' +
@@ -105,14 +125,14 @@
     arcoH: function (v) { return Math.min(70, 20 + v * this.u * 0.32); },
     setN: function (N, inicio) {
       this.N = N; this.inicio = inicio || 0; this.items = [];
-      var u = this.u = N <= 20 ? 36 : N <= 30 ? 26 : 16, pad = this.pad = 24;
+      var u = this.u = N <= 20 ? 36 : N <= 30 ? 26 : N <= 50 ? 16 : 9, pad = this.pad = 24;
       this.W = N * u + pad * 2; this.H = 132; this.y = this.H - 36;
       this.svgEl.setAttribute('viewBox', '0 0 ' + this.W + ' ' + this.H);
-      this.svgEl.style.minWidth = (N <= 20 ? 560 : N <= 30 ? 640 : 780) + 'px';
-      var y = this.y, cada = N <= 30 ? 1 : 5;
+      this.svgEl.style.minWidth = (N <= 20 ? 560 : N <= 30 ? 640 : N <= 50 ? 780 : 900) + 'px';
+      var y = this.y, cada = N <= 30 ? 1 : N <= 50 ? 5 : 10;
       var s = '<line x1="' + pad + '" y1="' + y + '" x2="' + (this.W - pad) + '" y2="' + y + '" class="din-eje"/>';
       for (var i = 0; i <= N; i++) {
-        var x = this.x(i), g = i % 5 === 0;
+        var x = this.x(i), g = i % (N > 50 ? 10 : 5) === 0;
         s += '<line x1="' + x + '" y1="' + (y - (g ? 10 : 6)) + '" x2="' + x + '" y2="' + (y + (g ? 10 : 6)) + '" class="din-marca"/>';
         if (i % cada === 0 || i === this.inicio) s += '<text x="' + x + '" y="' + (y + 30) + '" class="din-num" data-i="' + i + '">' + i + '</text>';
       }
