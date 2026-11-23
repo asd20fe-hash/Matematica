@@ -4,11 +4,11 @@ Guía para Claude Code (claude.ai/code) en este repositorio.
 
 ## Qué es
 
-"Matemática": app de práctica de matemática para Luz (1ro, 6 años) e Ian (4to, 10 años). Un shell con perfiles y menú abre actividades independientes. Luz tiene la Tabla del 100 (`actividades/1ro-tabla100/`), Escritura, Lectura e Inglés (`actividades/1ro-escritura/`, `actividades/1ro-lectura/`, `actividades/1ro-ingles/`) y Mi mascota en inglés (`actividades/1ro-ingles-mascota/`, 3D); Ian, las actividades de refuerzo de 4to las de fracciones, las Tablas de multiplicar con la tabla pitagórica y Rectas (geometría: paralelas, perpendiculares y oblicuas, `actividades/4to-geometria-rectas/`) (`actividades/4to-*`). El diseño de la estructura está en `PLAN.md`.
+"Matemática": app de práctica de matemática para Luz (1ro, 6 años) e Ian (4to, 10 años). Un shell con perfiles y menú abre actividades independientes. Luz tiene la Tabla del 100 (`actividades/1ro-tabla100/`), Escritura, Lectura e Inglés (`actividades/1ro-escritura/`, `actividades/1ro-lectura/`, `actividades/1ro-ingles/`), Mi mascota en inglés (`actividades/1ro-ingles-mascota/`, 3D) y Saltos con monedas (`actividades/1ro-monedas/`: la moneda de $2 vale 2, saltos, pagar justo y desafío); Ian, las actividades de refuerzo de 4to las de fracciones, las Tablas de multiplicar con la tabla pitagórica y Rectas (geometría: paralelas, perpendiculares y oblicuas, `actividades/4to-geometria-rectas/`) (`actividades/4to-*`). El diseño de la estructura está en `PLAN.md`.
 
 - **Ejecutar:** abrir `index.html` en el navegador, o servir la carpeta (`python -m http.server`). Con `file://` Chrome comparte localStorage entre archivos y Firefox lo aísla por archivo; con `http://localhost` todo se comparte. El perfil, el tema y el fondo viajan también por la URL (`?p=luz&t=dark&f=oceano`). Hace falta internet la primera vez para three.js r128 (cdnjs) y las fuentes; con http/https después quedan guardadas (`sw.js`).
 - **Sin conexión:** `sw.js` guarda la app; con internet los archivos propios salen siempre de la red (la copia guardada se usa solo sin conexión). **Al agregar, sacar o renombrar un archivo** correr `node tests/offline/run.js --escribir` (rearma `ARCHIVOS`); la prueba falla si la lista no coincide. Un recurso externo nuevo va en `EXTERNOS`.
-- **Pruebas** (node, sin dependencias): `node tests/offline/run.js`, `node tests/ingles/run.js`, `node tests/lectoescritura-1ro/run.js`, `node tests/refuerzo-4to/run.js` y `node tests/fracciones-4to/run.js`.
+- **Pruebas** (node, sin dependencias): `node tests/offline/run.js`, `node tests/ingles/run.js`, `node tests/lectoescritura-1ro/run.js`, `node tests/monedas-1ro/run.js`, `node tests/refuerzo-4to/run.js` y `node tests/fracciones-4to/run.js`.
 - **Depurar:** logs con prefijo `[Mate vX.Y]` (core y shell) y `[<actividad> vX.Y]` en cada actividad; muchas tienen `?debug=1`.
 - **Publicación:** se usa desde GitHub Pages (https://asd20fe-hash.github.io/Matematica/), que publica `main` solo. Hace falta `.nojekyll` en la raíz (sin él Jekyll no publica las carpetas que empiezan con `_`, como `_comun-4to`).
 - **Probar sin ensuciar la planilla:** antes de abrir actividades en un navegador de prueba, desviar la nube con `localStorage.setItem('mate.global.nube.url', JSON.stringify('http://localhost:9/nada'))` en un perfil aparte. La clave de lectura de la planilla nunca va en el código: se escribe a mano en Ajustes de padres.
@@ -77,6 +77,7 @@ Orden de scripts: `core.js`, `perfiles.js`, `registro.js`, y después el de la p
 - **Panel**: `analisis:'palabras'|'preguntas'` en el registro arma la tabla por ítem en "Registro en la nube".
 - **Inglés** (`1ro-ingles`): oral y con dibujos; voz en inglés propia de la actividad (en-US/en-GB). Para escribir en inglés, `LENGUA1.clasificar(…, {idioma:'en'})` (sin reglas del castellano).
 - **Pruebas:** `node tests/lectoescritura-1ro/run.js` (lectura e inglés con 1000 rondas por nivel y semilla fija).
+- **Dinero** (`1ro-monedas`): `_comun-1ro/dinero.js` (`DINERO`: moneda o billete con un punto por peso, `Recta` = recta + cuadrícula de 10 + cadena, `Balanza`, `menorCantidad`, `formas`) y `dinero.css`; base para las actividades de dinero que siguen (plan y pendientes en `docs/1ro-monedas/`). Pruebas: `node tests/monedas-1ro/run.js`.
 
 ## Rama de inglés (`_comun-ingles/`): convenciones
 

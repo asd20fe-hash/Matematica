@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  Saltos con monedas (1er grado)
+  Versión: v1.0.0 (2026-11-23). El historial de cambios está al principio de monedas.js
+  ============================================================
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Saltos con monedas</title>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../_comun-1ro/comun-1ro.css">
+<link rel="stylesheet" href="../_comun-1ro/dinero.css">
+<style>
+#app,.l1-barra h1{text-transform:uppercase}
+body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.mo-tabs{display:flex;gap:6px;margin:2px 0 8px}
+.mo-tabs button{flex:1 1 0;min-width:0;min-height:52px;padding:6px 4px;border-radius:14px;border:2px solid var(--glass-border);background:var(--glass-strong);font-size:clamp(13px,3.4vw,18px);font-weight:700;cursor:pointer;line-height:1.15}
+.mo-tabs button.on{background:var(--accent);color:var(--l1-sobre);border-color:transparent}
+.mo-sec[hidden]{display:none}
+.mo-sec h2{font-size:21px;margin:0 0 6px}
+.mo-pista{color:var(--muted);margin:0 0 8px;font-size:17px;text-transform:none}
+.mo-big{font-size:34px;font-weight:800;min-width:50px;text-align:center}
+.mo-seg button.on{background:var(--accent3);color:#111;border-color:transparent}
+.mo-seg .l1-btn{min-width:56px;min-height:52px}
+.l1-btn{min-height:52px}
+.mo-col{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--din-celda);border-radius:14px;padding:8px 6px}
+.mo-col .par{display:flex;gap:4px}
+.mo-col .fl{color:var(--muted);font-size:18px;line-height:1}
+.mo-col .tot{font-size:22px;font-weight:800;color:var(--accent)}
+.mo-acc{color:var(--accent)}
+/* pagar */
+.mo-paytop{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin:8px 0}
+.mo-etiqueta{display:flex;align-items:center;gap:10px;background:#fff;color:#111;border-radius:14px;padding:8px 18px 8px 36px;font-size:40px;font-weight:900;
+  clip-path:polygon(14% 0,100% 0,100% 100%,14% 100%,0 50%);box-shadow:var(--shadow)}
+.mo-falta{font-size:24px;font-weight:800;color:var(--accent)}
+.mo-monedero{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;padding:10px;background:var(--din-monedero);border:2px solid var(--din-monedero-borde);border-radius:16px;margin:8px 0}
+.mo-monedero button{background:none;border:0;padding:0;cursor:pointer;min-height:52px}
+.mo-monedero button:active{transform:scale(.9)}
+.mo-bandeja{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:62px;padding:8px;border:3px dashed var(--din-bandeja);border-radius:16px}
+.mo-bandeja .slot{display:flex;flex-direction:column;align-items:center;gap:2px}
+.mo-bandeja small{color:var(--muted);font-weight:700}
+.mo-sacude{animation:mo-sacude .4s}
+@keyframes mo-sacude{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+/* desafío */
+.mo-est{font-size:22px;font-weight:800}
+.mo-preg{font-size:clamp(22px,5vw,28px);font-weight:800;text-align:center;line-height:1.35;margin:6px 0}
+.mo-vis{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:8px 0;min-height:10px}
+.mo-resp{margin:8px auto;width:150px;height:70px;border-radius:16px;background:var(--l1-tecla);font-size:44px;font-weight:900;display:flex;align-items:center;justify-content:center;border:3px solid var(--l1-tecla-borde);color:var(--l1-tinta)}
+.mo-resp.ok{border-color:var(--ok);color:var(--ok)} .mo-resp.mal{border-color:var(--bad);color:var(--bad)}
+.mo-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:330px;margin:auto}
+.mo-pad .l1-tecla{min-height:62px;font-size:28px}
+.mo-pad .l1-tecla.listo,.mo-pad .l1-tecla.borrar{grid-column:auto}
+.mo-chico{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:150px;padding:10px;border-radius:18px;border:3px solid var(--l1-tecla-borde);background:var(--l1-tecla);cursor:pointer;color:var(--l1-tinta)}
+.mo-chico .cara{font-size:40px}
+.mo-chico .nom{font-size:22px;font-weight:800}
+.mo-chico .mon{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:210px}
+.mo-chico.ok{border-color:var(--ok);background:var(--l1-ok-bg)} .mo-chico.mal{border-color:var(--bad);background:var(--l1-mal-bg)}
+.mo-totales{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0}
+@media (prefers-reduced-motion: reduce){.mo-sacude{animation:none}}
+</style>
+</head>
+<body>
+<header class="l1-barra">
+  <button class="l1-btn" id="volver" title="Volver al menú">🏠</button>
+  <h1 id="titulo">Saltos con monedas</h1>
+  <span class="l1-ver" id="ver"></span>
+  <button class="l1-btn" id="sonido" title="Sonido" aria-pressed="true">🔊</button>
+  <button class="l1-btn" id="fondo" title="Elegir el fondo" aria-haspopup="menu">🎨</button>
+  <button class="l1-btn" id="tema" title="Cambiar modo claro u oscuro">🌙</button>
+</header>
+<main id="app">
+  <nav class="mo-tabs" id="tabs" role="tablist">
+    <button data-t="dos" role="tab">🪙 La de $2</button>
+    <button data-t="saltos" role="tab">🐸 Saltos</button>
+    <button data-t="pagar" role="tab">🛒 Pagar</button>
+    <button data-t="desafio" role="tab">⭐ Desafío</button>
+  </nav>
+
+  <!-- 1 · La moneda de $2 -->
+  <section class="mo-sec" id="sec-dos" hidden>
+    <div class="l1-panel">
+      <h2 id="bal-tit">¿Cuánto vale la moneda de $2?</h2>
+      <div class="l1-fila mo-seg" id="bal-obj"><span>Del otro lado:</span></div>
+      <p class="mo-pista" id="bal-pista"></p>
+      <svg class="din-bal" id="bal" viewBox="0 0 400 235" aria-hidden="true"></svg>
+      <div class="l1-fila" id="bal-btns"></div>
+      <div class="l1-msg" id="bal-msg" aria-live="polite"></div>
+    </div>
+    <div class="l1-panel">
+      <h2>Cada moneda de $2 son 2 de $1</h2>
+      <p class="mo-pista">Agregá monedas de $2 y mirá cuántas de $1 hacen falta. Arriba de cada una ves cuánta plata va.</p>
+      <div class="l1-fila">
+        <button class="l1-btn" id="ex-menos" aria-label="Una menos">−</button>
+        <span id="ex-n" class="mo-big">1</span>
+        <button class="l1-btn" id="ex-mas" aria-label="Una más">+</button>
+      </div>
+      <div class="l1-fila" id="ex-cols"></div>
+      <div class="l1-msg" id="ex-msg" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- 2 · Saltos en la recta -->
+  <section class="mo-sec" id="sec-saltos" hidden>
+    <div class="l1-panel">
+      <h2>Saltos en la recta</h2>
+      <p class="mo-pista">Cada moneda es un salto. La moneda de $2 salta 2 lugares de una vez.</p>
+      <div class="l1-fila mo-seg" id="sal-seg"><span>Saltar de a:</span></div>
+      <div class="l1-fila"><span>Empezar en:</span>
+        <button class="l1-btn" id="sal-ini-menos" aria-label="Empezar uno antes">−</button><span id="sal-ini" class="mo-big">0</span>
+        <button class="l1-btn" id="sal-ini-mas" aria-label="Empezar uno después">+</button></div>
+      <div class="l1-fila">
+        <span id="sal-moneda"></span>
+        <button class="l1-btn main" id="sal-saltar">¡Saltar!</button>
+        <button class="l1-btn" id="sal-volver">↩ Volver</button>
+        <button class="l1-btn" id="sal-reset">Desde el principio</button>
+      </div>
+      <div class="l1-msg" id="sal-msg" aria-live="polite"></div>
+      <div id="sal-recta"></div>
+    </div>
+  </section>
+
+  <!-- 3 · Pagar justo -->
+  <section class="mo-sec" id="sec-pagar" hidden>
+    <div class="l1-panel">
+      <div class="l1-fila mo-seg" id="pag-modo">
+        <button class="l1-btn" data-m="dos">Solo monedas de $2</button>
+        <button class="l1-btn" data-m="todas">Todas</button>
+        <button class="l1-btn" id="pag-otro">Otro precio</button>
+      </div>
+      <div class="mo-paytop">
+        <div class="mo-etiqueta"><span id="pag-prod">🧸</span><span id="pag-precio">$20</span></div>
+        <div class="mo-falta" id="pag-falta"></div>
+      </div>
+      <p class="mo-pista" style="text-align:center">Tocá las monedas del monedero para pagar justo.</p>
+      <div class="mo-monedero" id="pag-monedero"></div>
+      <div class="mo-bandeja" id="pag-bandeja"></div>
+      <div class="l1-fila">
+        <button class="l1-btn" id="pag-sacar">↩ Sacar la última</button>
+        <button class="l1-btn" id="pag-vaciar">Vaciar</button>
+      </div>
+      <div class="l1-msg" id="pag-msg" aria-live="polite"></div>
+      <div id="pag-recta"></div>
+    </div>
+  </section>
+
+  <!-- 4 · Desafío -->
+  <section class="mo-sec" id="sec-desafio" hidden>
+    <div class="l1-panel">
+      <div class="l1-fila mo-seg" id="des-seg" style="justify-content:space-between"><span>Saltos de:</span><span id="des-seg-fin" style="flex:1"></span><span class="mo-est" id="des-est">⭐ 0</span></div>
+      <div id="des-prog"></div>
+      <div class="mo-preg" id="des-preg"></div>
+      <div class="mo-vis" id="des-vis"></div>
+      <div id="des-resp-zona">
+        <div class="mo-resp" id="des-resp">?</div>
+        <div class="mo-pad" id="des-pad"></div>
+      </div>
+      <div class="l1-fila">
+        <button class="l1-btn" id="des-ayuda">💡 Ayuda</button>
+        <button class="l1-btn" id="des-oir" title="Escuchar la pregunta">🔊 Escuchar</button>
+        <button class="l1-btn main" id="des-sig" hidden>Siguiente ➜</button>
+      </div>
+      <div class="l1-msg" id="des-msg" aria-live="polite"></div>
+      <div id="des-ayuda-box" hidden>
+        <div class="l1-msg" id="des-ayuda-msg" aria-live="polite"></div>
+        <div id="des-recta"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../../core/core.js"></script>
+<script src="../../perfiles.js"></script>
+<script src="../registro.js"></script>
+<script src="../_comun-4to/azar.js"></script>
+<script src="../_comun-4to/eventos.js"></script>
+<script src="../_comun-4to/ui-comun.js"></script>
+<script src="../_comun-1ro/ui-1ro.js"></script>
+<script src="../_comun-1ro/dinero.js"></script>
+<script src="monedas-logica.js"></script>
+<script src="monedas.js"></script>
+</body>
+</html>

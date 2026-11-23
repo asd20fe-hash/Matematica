@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<!--
+  Saltos con monedas — v1.0 (2026-11-23)
+  Ejercicio interactivo para 1er grado: entender que la moneda de $2 vale el doble
+  que la de $1 y "hacer saltos" de a 2 (y de a 5 / 10) en la recta numérica.
+  Funciona 100% offline (un solo archivo, sin librerías ni fuentes externas).
+
+  v1.0
+  - Pestaña 1 "La moneda de $2": balanza ($2 = $1 + $1) y cambio de monedas de $2 por pares de $1.
+  - Pestaña 2 "Saltos": recta 0–20 (o 0–50) con saltos de a 1, 2, 5 o 10 + cuadrícula tipo tabla del 100.
+  - Pestaña 3 "Pagar": pagar un precio con monedas; recta + cuadrícula muestran cada moneda como un salto.
+  - Pestaña 4 "Desafío": preguntas con teclado numérico y ayuda animada.
+  - Voz (speechSynthesis) y sonidos (WebAudio) opcionales; modo oscuro.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#12141a">
+<title>Saltos con monedas v1.0</title>
+<style>
+:root{
+  --bg:#12141a;--panel:#1c1f28;--panel2:#272c39;--txt:#eef1f7;--mut:#9aa3b5;
+  --acc:#ffd166;--ok:#4ade80;--bad:#f87171;
+  --c1:#f5b301;--c2:#2ec4b6;--c5:#b07cf0;--c10:#5cc96b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px}
+body{padding-bottom:40px;user-select:none;-webkit-user-select:none}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);position:sticky;top:0;z-index:5;border-bottom:1px solid #000}
+header h1{font-size:20px;margin:0;flex:1}
+.ver{font-size:12px;color:var(--mut);background:var(--panel2);padding:3px 8px;border-radius:99px}
+.tabs{display:flex;gap:6px;padding:8px;overflow-x:auto;background:var(--panel);position:sticky;top:48px;z-index:4}
+.tabs button{flex:1;min-width:0;padding:12px 4px;border:0;border-radius:12px;background:var(--panel2);color:var(--txt);font-size:clamp(13px,3.6vw,17px);font-weight:700;white-space:nowrap}
+.tabs button.on{background:var(--acc);color:#111}
+.tab{display:none;padding:10px;max-width:900px;margin:auto}
+.tab.on{display:block}
+.card{background:var(--panel);border-radius:18px;padding:14px;margin-bottom:12px}
+h2{font-size:21px;margin:0 0 6px}
+.hint{color:var(--mut);margin:0 0 8px;font-size:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:8px 0}
+.btn{min-height:52px;padding:8px 16px;border:0;border-radius:14px;background:var(--panel2);color:var(--txt);font-size:19px;font-weight:700}
+.btn:active{transform:scale(.96)}
+.btn.pri{background:var(--acc);color:#111}
+.btn.sq{width:56px;font-size:26px}
+.btn:disabled{opacity:.35}
+.seg{gap:6px}
+.seg button{min-width:56px}
+.seg button.on{background:var(--c2);color:#111}
+.big{font-size:34px;font-weight:800;min-width:50px;text-align:center}
+.msg{text-align:center;font-size:21px;font-weight:700;min-height:30px;margin:8px 0;line-height:1.35}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+.hidden{display:none!important}
+
+/* ---- dinero ---- */
+.money{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;color:#111;font-weight:800;flex:none;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.25),0 3px 8px rgba(0,0,0,.5);border:3px solid rgba(255,255,255,.4)}
+.money.coin{width:var(--s);height:var(--s);border-radius:50%}
+.money.bill{width:calc(var(--s)*1.75);height:var(--s);border-radius:8px}
+.money b{font-size:calc(var(--s)*.3);line-height:1}
+.m1{background:radial-gradient(circle at 35% 30%,#ffe9a0,var(--c1))}
+.m2{background:radial-gradient(circle at 35% 30%,#c8f7f1,var(--c2))}
+.m5{background:radial-gradient(circle at 35% 30%,#ead9ff,var(--c5))}
+.m10{background:linear-gradient(135deg,#bdf0b8,var(--c10))}
+.dots{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:72%;margin-top:3px}
+.bill .dots{max-width:62%}
+.dots i{width:calc(var(--s)*.13);height:calc(var(--s)*.13);border-radius:50%;background:rgba(0,0,0,.55)}
+.m5 .dots i,.m10 .dots i{width:calc(var(--s)*.09);height:calc(var(--s)*.09)}
+.pop{animation:pop .35s}
+@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+/* ---- balanza ---- */
+#bal{width:100%;max-width:460px;display:block;margin:auto}
+#bal .stand{stroke:#8a93a6;stroke-width:8;fill:none;stroke-linecap:round}
+#bal .beam{stroke:#cfd6e4;stroke-width:8;stroke-linecap:round}
+#bal .pivot{fill:var(--acc)}
+#bal .str{stroke:#8a93a6;stroke-width:2}
+#bal .plate{fill:#3a4152;stroke:#cfd6e4;stroke-width:3}
+.ctext{font-weight:800;fill:#111}
+
+/* ---- cambio ---- */
+.excols{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:8px}
+.excol{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--panel2);border-radius:14px;padding:8px 6px}
+.excol .pair{display:flex;gap:4px}
+.excol .arrow{color:var(--mut);font-size:18px;line-height:1}
+.excol .tot{font-size:22px;font-weight:800;color:var(--acc)}
+
+/* ---- recta + cuadrícula ---- */
+.track{margin-top:6px}
+.nl-wrap{overflow-x:auto;background:var(--panel2);border-radius:14px;padding:4px 0}
+.nl{display:block;width:100%}
+.nl .axis{stroke:#cfd6e4;stroke-width:3}
+.nl .tick{stroke:#cfd6e4;stroke-width:2}
+.nl .lbl{fill:var(--mut);font-size:15px;text-anchor:middle;font-weight:600}
+.nl .lbl.land{fill:var(--acc);font-size:19px;font-weight:800}
+.nl .arc{fill:none;stroke-width:4;stroke-linecap:round}
+.nl .arc.new{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .42s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.nl .arcl{font-size:15px;font-weight:800;text-anchor:middle}
+.nl .hop{font-size:30px}
+.chain{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;margin:10px 0;min-height:34px}
+.chip{border:3px solid var(--mut);border-radius:10px;padding:2px 9px;font-weight:800;font-size:19px}
+.chain .ar{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:560px;margin:auto}
+.cell{aspect-ratio:1;border-radius:8px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:clamp(12px,3.2vw,19px);color:var(--mut);transition:background .3s}
+.cell.f{color:#111;font-weight:700}
+.cell.alt{filter:brightness(.72)}
+.cell.land{outline:3px solid #fff;outline-offset:-3px;font-weight:900}
+
+/* ---- pagar ---- */
+.sw{display:flex;align-items:center;gap:8px;font-size:18px;background:var(--panel2);padding:10px 14px;border-radius:14px}
+.sw input{width:24px;height:24px}
+.paytop{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin:8px 0}
+.tag{display:flex;align-items:center;gap:10px;background:#fff;color:#111;border-radius:14px;padding:8px 18px;font-size:40px;font-weight:900;
+  clip-path:polygon(14% 0,100% 0,100% 100%,14% 100%,0 50%);padding-left:36px}
+.falta{font-size:24px;font-weight:800;color:var(--acc)}
+.purse{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;padding:10px;background:#2b2216;border-radius:16px;margin:8px 0}
+.purse button{background:none;border:0;padding:0}
+.purse button:active{transform:scale(.9)}
+.tray{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:62px;padding:8px;border:3px dashed #3a4152;border-radius:16px}
+.tray .slot{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tray .slot small{color:var(--mut);font-weight:700}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* ---- desafío ---- */
+.stars{text-align:right;font-size:22px;font-weight:800}
+.q{font-size:25px;font-weight:800;text-align:center;line-height:1.35;margin:6px 0}
+.qvis{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0;min-height:10px}
+.ans{margin:8px auto;width:150px;height:70px;border-radius:16px;background:var(--panel2);font-size:44px;font-weight:900;display:flex;align-items:center;justify-content:center;border:3px solid #3a4152}
+.ans.ok{border-color:var(--ok);color:var(--ok)}.ans.bad{border-color:var(--bad);color:var(--bad)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:330px;margin:auto}
+.pad button{height:62px;font-size:28px}
+
+/* ---- festejo ---- */
+.conf{position:fixed;top:-40px;font-size:30px;z-index:50;pointer-events:none;animation:fall 1.8s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+footer{text-align:center;color:var(--mut);font-size:13px;margin-top:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🪙 Saltos con monedas</h1>
+  <span class="ver">v1.0</span>
+  <button class="btn" id="sndBtn" style="min-height:40px;padding:4px 12px">🔊</button>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-t="tab1" class="on">1 · La de $2</button>
+  <button data-t="tab2">2 · Saltos</button>
+  <button data-t="tab3">3 · Pagar</button>
+  <button data-t="tab4">4 · Desafío</button>
+</nav>
+
+<!-- ============ TAB 1 ============ -->
+<section id="tab1" class="tab on">
+  <div class="card">
+    <h2>¿Cuánto vale la moneda de $2?</h2>
+    <p class="hint">Poné monedas de $1 del otro lado hasta que la balanza quede derechita.</p>
+    <svg id="bal" viewBox="0 0 400 235"></svg>
+    <div class="row">
+      <button class="btn" id="balMinus">− sacar $1</button>
+      <button class="btn pri" id="balPlus">+ poner $1</button>
+    </div>
+    <div class="msg" id="balMsg"></div>
+  </div>
+  <div class="card">
+    <h2>Cambio: cada moneda de $2 son 2 de $1</h2>
+    <p class="hint">Agregá monedas de $2 y mirá cuántas de $1 hacen falta. Arriba de cada una ves cuánta plata va.</p>
+    <div class="row">
+      <button class="btn sq" id="exMinus">−</button>
+      <span id="exN" class="big">1</span>
+      <button class="btn sq" id="exPlus">+</button>
+    </div>
+    <div id="exCols" class="excols"></div>
+    <div class="msg" id="exMsg"></div>
+  </div>
+</section>
+
+<!-- ============ TAB 2 ============ -->
+<section id="tab2" class="tab">
+  <div class="card">
+    <h2>Saltos en la recta</h2>
+    <p class="hint">Cada moneda es un salto. La moneda de $2 salta 2 lugares de una vez.</p>
+    <div class="row seg" id="seg2"><span>Saltar de a:</span></div>
+    <div class="row">
+      <span id="coin2"></span>
+      <button class="btn pri" id="jump2">¡Saltar!</button>
+      <button class="btn" id="back2">↩ Volver</button>
+      <button class="btn" id="reset2">Desde 0</button>
+    </div>
+    <div class="msg" id="msg2"></div>
+    <div id="track2"></div>
+  </div>
+</section>
+
+<!-- ============ TAB 3 ============ -->
+<section id="tab3" class="tab">
+  <div class="card">
+    <div class="row">
+      <label class="sw"><input type="checkbox" id="only2" checked> Sólo monedas de $2</label>
+      <button class="btn" id="newPrice">Otro precio</button>
+    </div>
+    <div class="paytop">
+      <div class="tag"><span id="prod">🧸</span><span id="price">$20</span></div>
+      <div class="falta" id="falta"></div>
+    </div>
+    <p class="hint" style="text-align:center">Tocá las monedas del monedero para pagar justo.</p>
+    <div class="purse" id="purse"></div>
+    <div class="tray" id="tray"></div>
+    <div class="row">
+      <button class="btn" id="undo3">↩ Sacar la última</button>
+      <button class="btn" id="empty3">Vaciar</button>
+    </div>
+    <div class="msg" id="msg3"></div>
+    <div id="track3"></div>
+  </div>
+</section>
+
+<!-- ============ TAB 4 ============ -->
+<section id="tab4" class="tab">
+  <div class="card">
+    <div class="row seg" id="seg4" style="justify-content:space-between">
+      <span>Saltos de:</span><span id="seg4Fill" style="flex:1"></span><span class="stars" id="stars">⭐ 0</span>
+    </div>
+    <div class="q" id="qText"></div>
+    <div class="qvis" id="qVis"></div>
+    <div class="ans" id="ansBox">?</div>
+    <div class="pad" id="pad"></div>
+    <div class="row">
+      <button class="btn" id="help4">💡 Ayuda</button>
+      <button class="btn pri" id="next4">Otra ➜</button>
+    </div>
+    <div class="msg" id="msg4"></div>
+    <div id="helpBox" class="hidden">
+      <div class="msg" id="helpMsg"></div>
+      <div id="track4"></div>
+    </div>
+  </div>
+</section>
+
+<footer>Saltos con monedas · v1.0 · funciona sin internet</footer>
+
+<script>
+'use strict';
+const VERSION = '1.0';
+console.log('[saltos_monedas] v' + VERSION);
+
+const COL = {1:'#f5b301', 2:'#2ec4b6', 5:'#b07cf0', 10:'#5cc96b'};
+const $ = s => document.querySelector(s);
+const rand = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- sonido y voz ---------- */
+let soundOn = true, actx = null, esVoice = null;
+function beep(f=600, d=.12){
+  if(!soundOn) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(.18, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + d);
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+  }catch(e){}
+}
+function loadVoice(){
+  try{
+    const v = speechSynthesis.getVoices();
+    esVoice = v.find(x => /^es[-_]AR/i.test(x.lang)) || v.find(x => /^es/i.test(x.lang)) || null;
+  }catch(e){}
+}
+if('speechSynthesis' in window){ loadVoice(); speechSynthesis.onvoiceschanged = loadVoice; }
+function say(t){
+  if(!soundOn || !('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(t));
+    u.lang = esVoice ? esVoice.lang : 'es-AR';
+    if(esVoice) u.voice = esVoice;
+    u.rate = .95;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+$('#sndBtn').onclick = () => {
+  soundOn = !soundOn;
+  $('#sndBtn').textContent = soundOn ? '🔊' : '🔇';
+  if(!soundOn && 'speechSynthesis' in window) speechSynthesis.cancel();
+};
+
+function confetti(){
+  const em = ['⭐','🪙','🎉','✨','💚'];
+  for(let i=0;i<26;i++){
+    const s = document.createElement('span');
+    s.className = 'conf';
+    s.textContent = em[i % em.length];
+    s.style.left = Math.random()*100 + 'vw';
+    s.style.animationDelay = (Math.random()*.6) + 's';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 2600);
+  }
+  [523,659,784,1046].forEach((f,i) => setTimeout(() => beep(f,.18), i*110));
+}
+
+/* ---------- dinero ---------- */
+function moneyHTML(v, size=56, extra=''){
+  const isBill = v === 10;
+  return `<div class="money ${isBill?'bill':'coin'} m${v} ${extra}" style="--s:${size}px">`
+       + `<b>$${v}</b><span class="dots">${'<i></i>'.repeat(v)}</span></div>`;
+}
+function moneyName(v, n){
+  if(v === 10) return (n===1 ? 'billete' : 'billetes') + ' de $10';
+  return (n===1 ? 'moneda' : 'monedas') + ' de $' + v;
+}
+function svgCoin(x, y, r, v){
+  let s = `<circle cx="${x}" cy="${y}" r="${r}" fill="${COL[v]}" stroke="rgba(255,255,255,.45)" stroke-width="3"/>`;
+  s += `<text x="${x}" y="${y - r*.12}" class="ctext" font-size="${r*.72}" text-anchor="middle" dominant-baseline="middle">$${v}</text>`;
+  const dr = r*.13, gap = dr*2.6;
+  for(let i=0;i<v;i++){
+    const dx = x - (v-1)*gap/2 + i*gap;
+    s += `<circle cx="${dx}" cy="${y + r*.5}" r="${dr}" fill="rgba(0,0,0,.55)"/>`;
+  }
+  return s;
+}
+
+/* ---------- Recta numérica + cuadrícula (componente reutilizable) ---------- */
+class Track{
+  constructor(root, {N=20, hopper='🐸', onChange=null} = {}){
+    this.root = root; this.hopper = hopper; this.onChange = onChange;
+    this.q = Promise.resolve();
+    root.classList.add('track');
+    root.innerHTML = '<div class="nl-wrap"><svg class="nl"></svg></div><div class="chain"></div><div class="grid"></div>';
+    this.wrap = root.querySelector('.nl-wrap');
+    this.svg = root.querySelector('svg');
+    this.chainEl = root.querySelector('.chain');
+    this.gridEl = root.querySelector('.grid');
+    this.setN(N);
+  }
+  get total(){ return this.items.reduce((a,b) => a+b, 0); }
+  setN(N){
+    this.N = N; this.items = [];
+    const u = this.u = N<=20 ? 36 : N<=30 ? 26 : 16;
+    const pad = this.pad = 24;
+    this.W = N*u + pad*2; this.H = 132; this.y = this.H - 36;
+    this.svg.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
+    this.svg.style.minWidth = (N<=20 ? 560 : N<=30 ? 640 : 780) + 'px';
+    const y = this.y, every = N<=20 ? 1 : 5;
+    let s = `<line x1="${pad}" y1="${y}" x2="${this.W-pad}" y2="${y}" class="axis"/>`;
+    for(let i=0;i<=N;i++){
+      const x = this.x(i), big = i%5===0;
+      s += `<line x1="${x}" y1="${y-(big?10:6)}" x2="${x}" y2="${y+(big?10:6)}" class="tick"/>`;
+      if(i % every === 0) s += `<text x="${x}" y="${y+30}" class="lbl" data-i="${i}">${i}</text>`;
+    }
+    s += `<g class="arcs"></g><text class="hop" text-anchor="middle">${this.hopper}</text>`;
+    this.svg.innerHTML = s;
+    this.arcsG = this.svg.querySelector('.arcs');
+    this.hopEl = this.svg.querySelector('.hop');
+    this.lbls = [...this.svg.querySelectorAll('.lbl')];
+    this.placeHop(0, 0);
+    let g = '';
+    for(let i=1;i<=N;i++) g += `<div class="cell">${i}</div>`;
+    this.gridEl.innerHTML = g;
+    this.cells = [...this.gridEl.children];
+    this.render(false);
+  }
+  x(i){ return this.pad + i*this.u; }
+  arcH(v){ return Math.min(70, 20 + v*this.u*.32); }
+  placeHop(p, lift){
+    this.hopEl.setAttribute('x', this.x(p));
+    this.hopEl.setAttribute('y', this.y - 8 - lift);
+  }
+  anim(from, to){
+    return new Promise(res => {
+      const h = this.arcH(Math.abs(to-from)), t0 = performance.now(), D = 430;
+      const f = now => {
+        const t = Math.min(1, (now - t0)/D);
+        this.placeHop(from + (to-from)*t, 4*h*t*(1-t));
+        if(t < 1) requestAnimationFrame(f);
+        else { this.scrollTo(to); res(); }
+      };
+      requestAnimationFrame(f);
+    });
+  }
+  scrollTo(p){
+    const r = this.svg.getBoundingClientRect();
+    if(!r.width) return;
+    const px = this.x(p) * r.width / this.W;
+    this.wrap.scrollTo({left: px - this.wrap.clientWidth/2, behavior:'smooth'});
+  }
+  canAdd(v){ return this.total + v <= this.N; }
+  add(v){
+    if(!this.canAdd(v)) return false;
+    const from = this.total;
+    this.items.push(v);
+    this.render(true);
+    const to = this.total;
+    this.q = this.q.then(() => this.anim(from, to));
+    return this.q;
+  }
+  pop(){
+    if(!this.items.length) return this.q;
+    const from = this.total;
+    this.items.pop();
+    this.render(false);
+    const to = this.total;
+    this.q = this.q.then(() => this.anim(from, to));
+    return this.q;
+  }
+  reset(){
+    const from = this.total;
+    this.items = [];
+    this.render(false);
+    this.q = this.q.then(() => from ? this.anim(from, 0) : null);
+    return this.q;
+  }
+  render(animLast){
+    let a = 0, arcs = '';
+    const lands = new Set([0]);
+    this.cells.forEach(c => { c.className = 'cell'; c.style.background = ''; });
+    this.items.forEach((v, gi) => {
+      const b = a + v, xa = this.x(a), xb = this.x(b), h = this.arcH(v), y = this.y;
+      const last = animLast && gi === this.items.length - 1;
+      arcs += `<path pathLength="1" class="arc${last?' new':''}" stroke="${COL[v]}" d="M${xa} ${y} Q${(xa+xb)/2} ${y-2*h} ${xb} ${y}"/>`;
+      arcs += `<text class="arcl" fill="${COL[v]}" x="${(xa+xb)/2}" y="${y-h-8}">+${v}</text>`;
+      for(let i=a+1;i<=b;i++){
+        const c = this.cells[i-1];
+        c.classList.add('f');
+        if(gi % 2) c.classList.add('alt');
+        if(i === b) c.classList.add('land');
+        c.style.background = COL[v];
+      }
+      lands.add(b);
+      a = b;
+    });
+    this.arcsG.innerHTML = arcs;
+    this.lbls.forEach(l => l.classList.toggle('land', this.items.length > 0 && lands.has(+l.dataset.i)));
+    // cadena de conteo: 0 → 2 → 4 → 6
+    let ch = '<span class="chip">0</span>'; a = 0;
+    this.items.forEach(v => { a += v; ch += `<span class="ar">→</span><span class="chip" style="border-color:${COL[v]}">${a}</span>`; });
+    this.chainEl.innerHTML = ch;
+    if(this.onChange) this.onChange(this);
+  }
+}
+
+/* ---------- pestañas ---------- */
+$('#tabs').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === b.dataset.t));
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+};
+
+/* ================= TAB 1: balanza ================= */
+let balR = 0, balAng = 0, balRaf = null;
+function drawBal(ang){
+  const cx = 200, cy = 58, L = 135, r = ang*Math.PI/180, c = Math.cos(r), s = Math.sin(r);
+  const lx = cx - L*c, ly = cy - L*s, rx = cx + L*c, ry = cy + L*s;
+  let h = `<path d="M${cx} ${cy} L${cx} 222 M${cx-55} 222 L${cx+55} 222" class="stand"/>`;
+  h += `<line x1="${lx}" y1="${ly}" x2="${rx}" y2="${ry}" class="beam"/><circle cx="${cx}" cy="${cy}" r="9" class="pivot"/>`;
+  const plate = (px, py) =>
+    `<line x1="${px}" y1="${py}" x2="${px-48}" y2="${py+72}" class="str"/>` +
+    `<line x1="${px}" y1="${py}" x2="${px+48}" y2="${py+72}" class="str"/>` +
+    `<path d="M${px-58} ${py+72} Q${px} ${py+100} ${px+58} ${py+72} Z" class="plate"/>`;
+  h += plate(lx, ly) + plate(rx, ry);
+  h += svgCoin(lx, ly + 50, 24, 2);
+  const n = balR, sp = n > 1 ? Math.min(34, 96/(n-1)) : 0;
+  for(let i=0;i<n;i++) h += svgCoin(rx - (n-1)*sp/2 + i*sp, ry + 54, 17, 1);
+  $('#bal').innerHTML = h;
+}
+function updBal(){
+  const target = Math.max(-20, Math.min(20, (balR - 2)*11));
+  cancelAnimationFrame(balRaf);
+  const step = () => {
+    balAng += (target - balAng)*.15;
+    if(Math.abs(target - balAng) < .2) balAng = target;
+    drawBal(balAng);
+    if(balAng !== target) balRaf = requestAnimationFrame(step);
+  };
+  step();
+  const m = $('#balMsg');
+  if(balR < 2){
+    m.className = 'msg';
+    m.textContent = balR === 0 ? 'Del lado de la moneda de $2 hay más plata. ¡Poné una de $1!' :
+                                 '$1 todavía es menos que $2. ¡Poné otra!';
+  } else if(balR === 2){
+    m.className = 'msg ok';
+    m.innerHTML = '¡Derechita! 🎉<br>1 moneda de $2 = 2 monedas de $1<br>$1 + $1 = $2';
+    confetti(); say('¡Muy bien! Una moneda de dos vale lo mismo que dos monedas de uno');
+  } else {
+    m.className = 'msg bad';
+    m.textContent = `Ahora hay más plata del lado de las de $1 ($${balR}). Sacá una.`;
+  }
+}
+$('#balPlus').onclick = () => { if(balR < 6){ balR++; beep(500 + balR*60); updBal(); } };
+$('#balMinus').onclick = () => { if(balR > 0){ balR--; beep(400); updBal(); } };
+drawBal(0); updBal();
+
+/* ================= TAB 1: cambio ================= */
+let exN = 1;
+function renderEx(){
+  $('#exN').textContent = exN;
+  let h = '';
+  for(let i=1;i<=exN;i++){
+    h += `<div class="excol"><span class="tot">$${i*2}</span>${moneyHTML(2,52, i===exN?'pop':'')}`
+       + `<span class="arrow">⇩</span><div class="pair">${moneyHTML(1,38)}${moneyHTML(1,38)}</div></div>`;
+  }
+  $('#exCols').innerHTML = h;
+  $('#exMsg').innerHTML = `${exN} ${moneyName(2,exN)} = ${exN*2} ${moneyName(1,exN*2)} = <span style="color:var(--acc)">$${exN*2}</span>`;
+}
+$('#exPlus').onclick = () => { if(exN < 10){ exN++; renderEx(); beep(500 + exN*50); say(exN*2); } };
+$('#exMinus').onclick = () => { if(exN > 1){ exN--; renderEx(); beep(400); say(exN*2); } };
+renderEx();
+
+/* ================= TAB 2: saltos ================= */
+let step2 = 2;
+const t2 = new Track($('#track2'), {N:20, hopper:'🐸', onChange: tr => {
+  const k = tr.items.length, tot = tr.total;
+  $('#msg2').className = 'msg' + (tot === tr.N ? ' ok' : '');
+  $('#msg2').innerHTML = k === 0 ? 'Tocá <b>¡Saltar!</b>' :
+    `${k} ${k===1?'salto':'saltos'} de a ${step2} = <span style="color:var(--acc)">${tot}</span>` +
+    `<br><small style="color:var(--mut)">${k} ${moneyName(step2,k)} = $${tot}</small>` +
+    (tot === tr.N ? '<br>¡Llegaste al final! 🎉' : '');
+  $('#jump2').disabled = !tr.canAdd(step2);
+}});
+[1,2,5,10].forEach(v => {
+  const b = document.createElement('button');
+  b.className = 'btn' + (v === step2 ? ' on' : '');
+  b.textContent = v;
+  b.onclick = () => {
+    step2 = v;
+    document.querySelectorAll('#seg2 button').forEach(x => x.classList.toggle('on', x === b));
+    $('#coin2').innerHTML = moneyHTML(v, 50);
+    t2.setN(v <= 2 ? 20 : 50);
+  };
+  $('#seg2').appendChild(b);
+});
+$('#coin2').innerHTML = moneyHTML(2, 50);
+$('#jump2').onclick = () => {
+  if(!t2.canAdd(step2)) return;
+  t2.add(step2).then(() => { beep(440 + t2.total*15); say(t2.total); if(t2.total === t2.N) confetti(); });
+};
+$('#back2').onclick = () => { t2.pop(); beep(300); };
+$('#reset2').onclick = () => { t2.reset(); };
+t2.render(false);
+
+/* ================= TAB 3: pagar ================= */
+const PRODS = ['🧸','🧃','🍭','✏️','🍎','🎈','📒','🍪','🧩','🚗'];
+let price = 20, paid = false;
+const t3 = new Track($('#track3'), {N:20, hopper:'🐰'});
+function newPrice(first){
+  const only2 = $('#only2').checked;
+  if(first) price = 20;             // el problema de la tarea: $20 con monedas de $2
+  else {
+    let p; do { p = only2 ? 2*rand(2,10) : rand(5,20); } while(p === price);
+    price = p;
+  }
+  $('#price').textContent = '$' + price;
+  $('#prod').textContent = PRODS[rand(0, PRODS.length-1)];
+  paid = false;
+  t3.reset(); renderPurse(); upd3();
+  say('Cuesta ' + price + ' pesos');
+}
+function renderPurse(){
+  const vals = $('#only2').checked ? [2] : [1,2,5,10];
+  $('#purse').innerHTML = vals.map(v => `<button data-v="${v}">${moneyHTML(v, 66)}</button>`).join('');
+}
+function renderTray(){
+  let a = 0;
+  $('#tray').innerHTML = t3.items.map((v,i) => {
+    a += v;
+    return `<div class="slot">${moneyHTML(v, 46, i===t3.items.length-1 ? 'pop' : '')}<small>$${a}</small></div>`;
+  }).join('') || '<span style="color:var(--mut);align-self:center">acá van las monedas</span>';
+}
+function upd3(){
+  renderTray();
+  const tot = t3.total, falta = price - tot;
+  $('#falta').textContent = falta > 0 ? `Te falta $${falta}` : '¡Justo!';
+  const m = $('#msg3');
+  if(falta === 0 && t3.items.length){
+    const cnt = {};
+    t3.items.forEach(v => cnt[v] = (cnt[v]||0) + 1);
+    const parts = Object.keys(cnt).sort((x,y)=>y-x).map(v => `${cnt[v]} ${moneyName(+v, cnt[v])}`);
+    m.className = 'msg ok';
+    m.innerHTML = `¡Pagaste justo $${price}! 🎉<br>Usaste ${parts.join(' y ')}`;
+    if(!paid){ paid = true; setTimeout(() => { confetti(); say(`¡Muy bien! Pagaste ${price} pesos con ${parts.join(' y ').replace(/\$/g,'')}`); }, 450); }
+  } else if(t3.items.length === 0){
+    m.className = 'msg'; m.textContent = '';
+  } else {
+    m.className = 'msg'; m.textContent = `Llevás $${tot}`;
+    paid = false;
+  }
+}
+$('#purse').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  const v = +b.dataset.v, tot = t3.total;
+  if(tot === price) return;
+  if(tot + v > price){
+    $('#msg3').className = 'msg bad';
+    $('#msg3').textContent = `Con esa te pasás: serían $${tot+v} y cuesta $${price}.`;
+    $('#purse').classList.remove('shake'); void $('#purse').offsetWidth; $('#purse').classList.add('shake');
+    beep(180, .25); say('Te pasás');
+    return;
+  }
+  t3.add(v).then(() => { beep(440 + t3.total*15); if(t3.total !== price) say(t3.total); });
+  upd3();
+};
+$('#undo3').onclick = () => { t3.pop(); upd3(); beep(300); };
+$('#empty3').onclick = () => { t3.reset(); upd3(); };
+$('#newPrice').onclick = () => newPrice(false);
+$('#only2').onchange = () => newPrice(false);
+newPrice(true);
+
+/* ================= TAB 4: desafío ================= */
+let step4 = 2, stars = 0, cur = null, typed = '', solved = false, helpToken = 0;
+const MAXT = {2:20, 5:30, 10:50};
+const t4 = new Track($('#track4'), {N:20, hopper:'🦘', onChange: tr => {
+  const k = tr.items.length;
+  $('#helpMsg').innerHTML = k ? `${k} ${moneyName(step4,k)} = <span style="color:var(--acc)">$${tr.total}</span>` : '';
+}});
+[2,5,10].forEach(v => {
+  const b = document.createElement('button');
+  b.className = 'btn' + (v === step4 ? ' on' : '');
+  b.textContent = v;
+  b.onclick = () => {
+    step4 = v;
+    document.querySelectorAll('#seg4 button').forEach(x => x.classList.toggle('on', x === b));
+    newQ();
+  };
+  $('#seg4').insertBefore(b, $('#seg4Fill'));
+});
+function newQ(){
+  helpToken++;
+  const s = step4, maxN = MAXT[s]/s;
+  const types = ['cuantas','cuanto','seguir'];
+  const type = types[rand(0,2)];
+  let q, ans, vis = '', jumps;
+  if(type === 'cuantas'){
+    const n = rand(2, maxN), X = n*s;
+    q = `¿Cuántas ${moneyName(s,2)} necesitás para pagar <span style="color:var(--acc)">$${X}</span>?`;
+    vis = moneyHTML(s, 60) + `<span class="big" style="align-self:center">→ $${X}</span>`;
+    ans = n; jumps = n;
+  } else if(type === 'cuanto'){
+    const n = rand(2, maxN);
+    q = `Tengo ${n} ${moneyName(s,n)}. ¿Cuánta plata tengo?`;
+    for(let i=0;i<n;i++) vis += moneyHTML(s, s===10 ? 44 : 50);
+    ans = n*s; jumps = n;
+  } else {
+    const st = rand(0, maxN - 3);
+    const seq = [st, st+1, st+2].map(m => m*s);
+    q = `Seguí contando de a ${s}:<br><span style="color:var(--acc)">${seq.join(', ')}, …</span>`;
+    ans = (st+3)*s; jumps = st+3;
+  }
+  cur = {type, ans, jumps};
+  typed = ''; solved = false;
+  $('#qText').innerHTML = q;
+  $('#qVis').innerHTML = vis;
+  $('#ansBox').textContent = '?'; $('#ansBox').className = 'ans';
+  $('#msg4').textContent = ''; $('#msg4').className = 'msg';
+  $('#helpBox').classList.add('hidden');
+  t4.setN(MAXT[s]);
+  say($('#qText').textContent);
+}
+async function showHelp(){
+  const tok = ++helpToken;
+  $('#helpBox').classList.remove('hidden');
+  t4.setN(MAXT[step4]);
+  await sleep(300);
+  for(let i=0;i<cur.jumps;i++){
+    if(tok !== helpToken) return;
+    await t4.add(step4);
+    if(tok !== helpToken) return;
+    beep(440 + t4.total*12); say(t4.total);
+    await sleep(650);
+  }
+}
+const KEYS = ['1','2','3','4','5','6','7','8','9','⌫','0','✔'];
+$('#pad').innerHTML = KEYS.map(k => `<button class="btn${k==='✔'?' pri':''}" data-k="${k}">${k}</button>`).join('');
+$('#pad').onclick = e => {
+  const b = e.target.closest('button'); if(!b || solved) return;
+  const k = b.dataset.k;
+  if(k === '⌫') typed = typed.slice(0,-1);
+  else if(k === '✔') return check();
+  else if(typed.length < 3) typed += k;
+  beep(700, .05);
+  $('#ansBox').className = 'ans';
+  $('#ansBox').textContent = typed || '?';
+};
+function check(){
+  if(!typed) return;
+  if(+typed === cur.ans){
+    solved = true; stars++;
+    $('#stars').textContent = '⭐ ' + stars;
+    $('#ansBox').className = 'ans ok';
+    $('#msg4').className = 'msg ok'; $('#msg4').textContent = '¡Muy bien! 🎉';
+    confetti(); say('¡Muy bien!');
+  } else {
+    $('#ansBox').className = 'ans bad';
+    $('#msg4').className = 'msg bad'; $('#msg4').textContent = 'Casi… mirá la ayuda y probá de nuevo 💡';
+    beep(180, .25); say('Casi. Miremos los saltos');
+    typed = '';
+    showHelp();
+  }
+}
+$('#help4').onclick = showHelp;
+$('#next4').onclick = newQ;
+newQ();
+</script>
+</body>
+</html>
